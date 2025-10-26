@@ -1,0 +1,11 @@
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\bin\Debug\net8.0\PdfPortal.Domain.deps.json
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\bin\Debug\net8.0\PdfPortal.Domain.dll
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\bin\Debug\net8.0\PdfPortal.Domain.pdb
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\obj\Debug\net8.0\PdfPortal.Domain.GeneratedMSBuildEditorConfig.editorconfig
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\obj\Debug\net8.0\PdfPortal.Domain.AssemblyInfoInputs.cache
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\obj\Debug\net8.0\PdfPortal.Domain.AssemblyInfo.cs
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\obj\Debug\net8.0\PdfPortal.Domain.csproj.CoreCompileInputs.cache
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\obj\Debug\net8.0\PdfPortal.Domain.dll
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\obj\Debug\net8.0\refint\PdfPortal.Domain.dll
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\obj\Debug\net8.0\PdfPortal.Domain.pdb
+E:\workana\pdfgate\backend\src\PdfPortal.Domain\obj\Debug\net8.0\ref\PdfPortal.Domain.dll

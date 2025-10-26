@@ -1,0 +1,11 @@
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\bin\Debug\net8.0\PdfComplianceProcessor.deps.json
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\bin\Debug\net8.0\PdfComplianceProcessor.dll
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\bin\Debug\net8.0\PdfComplianceProcessor.pdb
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfComplianceProcessor.GeneratedMSBuildEditorConfig.editorconfig
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfComplianceProcessor.AssemblyInfoInputs.cache
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfComplianceProcessor.AssemblyInfo.cs
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfComplianceProcessor.csproj.CoreCompileInputs.cache
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfComplianceProcessor.dll
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\refint\PdfComplianceProcessor.dll
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfComplianceProcessor.pdb
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\ref\PdfComplianceProcessor.dll
