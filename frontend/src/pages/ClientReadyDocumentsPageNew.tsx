@@ -54,20 +54,34 @@ const TransformationDrawer: React.FC<{
   getDisplayValue: (value: string, type: string) => string
 }> = ({ isOpen, onClose, document, loading, onDownload, getDisplayValue }) => {
   const [currentPage, setCurrentPage] = useState(0)
+  const [isVisible, setIsVisible] = useState(false)
 
+  // Handle animation states
+  React.useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true)
+    } else {
+      const timer = setTimeout(() => setIsVisible(false), 300) // Match transition duration
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen])
 
-  if (!isOpen) return null
+  if (!isVisible) return null
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Animated Backdrop */}
       <div
-        className="absolute inset-0 bg-gradient-to-br from-black/60 via-slate-900/50 to-black/60 backdrop-blur-sm transition-opacity duration-300"
+        className={`absolute inset-0 bg-gradient-to-br from-black/60 via-slate-900/50 to-black/60 backdrop-blur-sm transition-all duration-300 ${
+          isOpen ? 'opacity-100' : 'opacity-0'
+        }`}
         onClick={onClose}
       />
 
       {/* Compact Drawer */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20 flex flex-col">
+      <div className={`fixed top-0 right-0 h-full w-full max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20 flex flex-col transition-all duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}>
         {/* Header with Gradient and Navigation */}
         <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-4 sm:p-6">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90"></div>
@@ -1368,14 +1382,14 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         {/* Success Modal */}
         {showSuccessModal && (
           <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-1000 animate-in fade-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowSuccessModal(false)
               }
             }}
           >
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto transition-all duration-1000 animate-in zoom-in-95 slide-in-from-bottom-4">
               <button
                 onClick={() => setShowSuccessModal(false)}
                 className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
