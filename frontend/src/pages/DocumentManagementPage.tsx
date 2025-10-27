@@ -3,7 +3,6 @@ import {
   FileText,
   Download,
   Search,
-  MoreHorizontal,
   Eye,
   Clock,
   Calendar,
@@ -13,7 +12,8 @@ import {
   AlertTriangle,
   CheckCircle,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  XCircle
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
@@ -38,6 +38,8 @@ export const DocumentManagementPage: React.FC = () => {
   const [filterType, setFilterType] = useState<'All' | 'Factura' | 'Recibo' | 'Extracto'>('All')
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
+  const [showPdfModal, setShowPdfModal] = useState(false)
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
 
   // Custom Dropdown Component
   const CustomDropdown: React.FC<{
@@ -110,6 +112,21 @@ export const DocumentManagementPage: React.FC = () => {
     
     // Generate Excel file and download
     XLSX.writeFile(wb, 'documentos.xlsx')
+  }
+
+  const handleViewDocument = (document: Document) => {
+    setSelectedDocument(document)
+    setShowPdfModal(true)
+  }
+
+  const handleDownloadDocument = (document: Document) => {
+    // TODO: Implement actual PDF download functionality
+    console.log('Downloading PDF:', document.fileName)
+    // Create a mock PDF download
+    const link = window.document.createElement('a')
+    link.href = '#' // Replace with actual PDF URL
+    link.download = document.fileName
+    link.click()
   }
 
   const [documents] = useState<Document[]>([
@@ -419,14 +436,17 @@ export const DocumentManagementPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
-                      <button className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200">
+                      <button 
+                        onClick={() => handleViewDocument(doc)}
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+                      >
                         <Eye className="h-4 w-4 text-white/60 hover:text-white" />
                       </button>
-                      <button className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200">
-                        <Download className="h-4 w-4 text-white/60 hover:text-white" />
-                      </button>
-                      <button className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200">
-                        <MoreHorizontal className="h-4 w-4 text-white/60 hover:text-white" />
+                      <button 
+                        onClick={() => handleDownloadDocument(doc)}
+                        className="p-2 hover:bg-blue-500/20 rounded-lg transition-colors duration-200 group"
+                      >
+                        <Download className="h-4 w-4 text-white/60 hover:text-blue-400 group-hover:text-blue-400" />
                       </button>
                     </div>
                   </td>
@@ -436,6 +456,91 @@ export const DocumentManagementPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* PDF View Modal */}
+      {showPdfModal && selectedDocument && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowPdfModal(false)
+            }
+          }}
+        >
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-6xl h-[90vh] p-4 sm:p-6 relative flex flex-col">
+            <button
+              onClick={() => setShowPdfModal(false)}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200 z-10"
+            >
+              <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
+            </button>
+
+            {/* Header */}
+            <div className="mb-4 sm:mb-6 pr-8">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">{selectedDocument.fileName}</h3>
+                  <p className="text-xs sm:text-sm text-blue-200/80">
+                    {selectedDocument.documentType} • {selectedDocument.fileSize} • Subido por {selectedDocument.uploader}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* PDF Viewer */}
+            <div className="flex-1 bg-white/5 rounded-xl p-4 overflow-hidden">
+              <div className="w-full h-full flex items-center justify-center bg-white/10 rounded-lg">
+                <div className="text-center">
+                  <FileText className="h-16 w-16 text-white/40 mx-auto mb-4" />
+                  <p className="text-white/60 mb-2">Vista previa del PDF</p>
+                  <p className="text-xs text-white/40 mb-4">
+                    {selectedDocument.fileName}
+                  </p>
+                  <div className="flex items-center justify-center space-x-4">
+                    <button
+                      onClick={() => handleDownloadDocument(selectedDocument)}
+                      className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 hover:scale-105 shadow-lg flex items-center space-x-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Descargar PDF</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Document Info */}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="p-3 bg-white/5 rounded-xl">
+                <p className="text-xs text-white/60 mb-1">Estado</p>
+                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  selectedDocument.status === 'Completado' ? 'text-green-400 bg-green-400/20' :
+                  selectedDocument.status === 'Procesando' ? 'text-blue-400 bg-blue-400/20' :
+                  selectedDocument.status === 'Error' ? 'text-red-400 bg-red-400/20' :
+                  'text-yellow-400 bg-yellow-400/20'
+                }`}>
+                  {selectedDocument.status === 'Completado' && <CheckCircle className="h-3 w-3 mr-1" />}
+                  {selectedDocument.status === 'Procesando' && <Clock className="h-3 w-3 mr-1" />}
+                  {selectedDocument.status === 'Error' && <AlertCircle className="h-3 w-3 mr-1" />}
+                  {selectedDocument.status === 'Pendiente de revisión' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                  {selectedDocument.status}
+                </div>
+              </div>
+              <div className="p-3 bg-white/5 rounded-xl">
+                <p className="text-xs text-white/60 mb-1">RFC</p>
+                <p className="text-sm text-white">{selectedDocument.extractedData.rfc}</p>
+              </div>
+              <div className="p-3 bg-white/5 rounded-xl">
+                <p className="text-xs text-white/60 mb-1">Período</p>
+                <p className="text-sm text-white">{selectedDocument.extractedData.periodo}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

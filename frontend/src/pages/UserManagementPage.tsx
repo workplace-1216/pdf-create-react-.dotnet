@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Download,
   XCircle,
-  ChevronDown
+  ChevronDown,
+  FileText
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
@@ -36,6 +37,8 @@ export const UserManagementPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showPdfModal, setShowPdfModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showRoleDropdown, setShowRoleDropdown] = useState(false)
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
@@ -259,7 +262,17 @@ export const UserManagementPage: React.FC = () => {
 
   const handleViewUser = (user: User) => {
     setSelectedUser(user)
-    setShowViewModal(true)
+    setShowPdfModal(true)
+  }
+
+  const handleDownloadPdf = (user: User) => {
+    // TODO: Implement actual PDF download functionality
+    console.log('Downloading PDF for user:', user.name)
+    // Create a mock PDF download
+    const link = document.createElement('a')
+    link.href = '#' // Replace with actual PDF URL
+    link.download = `${user.name}_documentos.pdf`
+    link.click()
   }
 
   const handleEditUser = (user: User) => {
@@ -268,9 +281,16 @@ export const UserManagementPage: React.FC = () => {
   }
 
   const handleDeleteUser = (user: User) => {
-    if (window.confirm(`¿Estás seguro de que quieres eliminar al usuario ${user.name}?`)) {
-      // TODO: Implement delete user functionality
-      console.log('Deleting user:', user)
+    setSelectedUser(user)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteUser = () => {
+    if (selectedUser) {
+      // TODO: Implement actual delete user functionality
+      console.log('Deleting user:', selectedUser)
+      setShowDeleteModal(false)
+      setSelectedUser(null)
       // You can add actual delete logic here
     }
   }
@@ -836,6 +856,78 @@ export const UserManagementPage: React.FC = () => {
                 className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 hover:scale-105 shadow-lg order-1 sm:order-2"
               >
                 Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedUser && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowDeleteModal(false)
+            }
+          }}
+        >
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+            >
+              <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
+            </button>
+
+            <div className="mb-4 sm:mb-6 pr-8">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="p-2 bg-gradient-to-r from-red-500 to-pink-500 rounded-xl">
+                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-white">Confirmar Eliminación</h3>
+              </div>
+              <p className="text-xs sm:text-sm text-red-200/80">Esta acción no se puede deshacer</p>
+            </div>
+
+            <div className="space-y-3 sm:space-y-4">
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                <p className="text-sm text-white mb-2">
+                  ¿Estás seguro de que quieres eliminar al usuario <span className="font-semibold text-red-300">{selectedUser.name}</span>?
+                </p>
+                <p className="text-xs text-red-200/80">
+                  Se eliminarán todos los datos asociados con este usuario, incluyendo documentos y historial.
+                </p>
+              </div>
+
+              <div className="p-3 bg-white/5 rounded-xl">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">
+                      {selectedUser.name.split(' ').map(n => n[0]).join('')}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{selectedUser.name}</p>
+                    <p className="text-xs text-white/60">{selectedUser.email}</p>
+                    <p className="text-xs text-white/60">{selectedUser.role} • {selectedUser.status}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-6">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors duration-200 order-2 sm:order-1"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDeleteUser}
+                className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-pink-500 rounded-xl hover:from-red-600 hover:to-pink-600 transition-all duration-300 hover:scale-105 shadow-lg order-1 sm:order-2"
+              >
+                Eliminar Usuario
               </button>
             </div>
           </div>

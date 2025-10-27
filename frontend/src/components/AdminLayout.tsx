@@ -136,12 +136,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <p className="text-sm text-blue-200/80">Sistema de gestión integral</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2 px-3 py-2 bg-white/10 rounded-lg">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-white">Sistema Activo</span>
-              </div>
-            </div>
           </div>
         </div>
 

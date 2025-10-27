@@ -622,6 +622,8 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   const [uploading, setUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [dragActive, setDragActive] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [uploadedFileName, setUploadedFileName] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch ready documents
@@ -832,8 +834,8 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       console.log('Document list refreshed, current count:', readyDocs.length)
 
       // Show success message with document count
-      const currentCount = readyDocs.length
-      alert(`Documento subido y procesado exitosamente! Total de documentos: ${currentCount}`)
+      setUploadedFileName(selectedFile.name)
+      setShowSuccessModal(true)
     } catch (error) {
       console.error('Upload failed:', error)
       console.error('Error details:', {
@@ -1362,6 +1364,79 @@ export const ClientReadyDocumentsPage: React.FC = () => {
           onDownload={handleDownload}
           getDisplayValue={getDisplayValue}
         />
+
+        {/* Success Modal */}
+        {showSuccessModal && (
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowSuccessModal(false)
+              }
+            }}
+          >
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+              >
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
+              </button>
+
+              <div className="mb-4 sm:mb-6 pr-8">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">¡Documento Subido Exitosamente!</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-green-200/80">El documento ha sido procesado correctamente</p>
+              </div>
+
+              <div className="space-y-3 sm:space-y-4">
+                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-500/20 rounded-lg">
+                      <FileText className="h-5 w-5 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{uploadedFileName}</p>
+                      <p className="text-xs text-green-200/80">Archivo procesado correctamente</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white/5 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-white/60 mb-1">Total de Documentos</p>
+                      <p className="text-lg font-semibold text-white">{readyDocs.length}</p>
+                    </div>
+                    <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
+                      <Database className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white/5 rounded-xl">
+                  <div className="flex items-center space-x-2 text-xs text-white/60">
+                    <CheckSquare className="h-3 w-3 text-green-400" />
+                    <span>El documento está listo para revisión y descarga</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end mt-4 sm:mt-6">
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 hover:scale-105 shadow-lg"
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
