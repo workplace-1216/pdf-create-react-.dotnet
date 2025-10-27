@@ -3,7 +3,7 @@ import {
   Users,
   UserPlus,
   Search,
-  MoreHorizontal,
+  Trash2,
   Edit,
   Eye,
   Shield,
@@ -22,8 +22,8 @@ interface User {
   id: string
   name: string
   email: string
-  role: 'Admin' | 'Client'
-  status: 'Active' | 'Inactive' | 'Pending'
+  role: 'Admin' | 'Cliente'
+  status: 'Activo' | 'Inactivo' | 'Pendiente'
   lastLogin: string
   createdAt: string
   documentsCount: number
@@ -31,8 +31,8 @@ interface User {
 
 export const UserManagementPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterRole, setFilterRole] = useState<'All' | 'Admin' | 'Client'>('All')
-  const [filterStatus, setFilterStatus] = useState<'All' | 'Active' | 'Inactive' | 'Pending'>('All')
+  const [filterRole, setFilterRole] = useState<'All' | 'Admin' | 'Cliente'>('All')
+  const [filterStatus, setFilterStatus] = useState<'All' | 'Activo' | 'Inactivo' | 'Pendiente'>('All')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -40,6 +40,7 @@ export const UserManagementPage: React.FC = () => {
   const [showRoleDropdown, setShowRoleDropdown] = useState(false)
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [showEditStatusDropdown, setShowEditStatusDropdown] = useState(false)
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -98,8 +99,8 @@ export const UserManagementPage: React.FC = () => {
       id: '1',
       name: 'María González',
       email: 'maria.gonzalez@empresa.com',
-      role: 'Client',
-      status: 'Active',
+      role: 'Cliente',
+      status: 'Activo',
       lastLogin: '2024-01-15 14:30',
       createdAt: '2024-01-01',
       documentsCount: 15
@@ -108,8 +109,8 @@ export const UserManagementPage: React.FC = () => {
       id: '2',
       name: 'Carlos Rodríguez',
       email: 'carlos.rodriguez@empresa.com',
-      role: 'Client',
-      status: 'Active',
+      role: 'Cliente',
+      status: 'Activo',
       lastLogin: '2024-01-15 12:15',
       createdAt: '2024-01-05',
       documentsCount: 8
@@ -118,8 +119,8 @@ export const UserManagementPage: React.FC = () => {
       id: '3',
       name: 'Ana Martínez',
       email: 'ana.martinez@empresa.com',
-      role: 'Client',
-      status: 'Pending',
+      role: 'Cliente',
+      status: 'Pendiente',
       lastLogin: '2024-01-14 16:45',
       createdAt: '2024-01-10',
       documentsCount: 0
@@ -128,8 +129,8 @@ export const UserManagementPage: React.FC = () => {
       id: '4',
       name: 'Luis Hernández',
       email: 'luis.hernandez@empresa.com',
-      role: 'Client',
-      status: 'Inactive',
+      role: 'Cliente',
+      status: 'Inactivo',
       lastLogin: '2024-01-10 09:20',
       createdAt: '2023-12-15',
       documentsCount: 23
@@ -139,7 +140,7 @@ export const UserManagementPage: React.FC = () => {
       name: 'Admin User',
       email: 'admin@empresa.com',
       role: 'Admin',
-      status: 'Active',
+      status: 'Activo',
       lastLogin: '2024-01-15 15:00',
       createdAt: '2023-11-01',
       documentsCount: 0
@@ -157,18 +158,18 @@ export const UserManagementPage: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Active': return 'text-green-400 bg-green-400/20'
-      case 'Inactive': return 'text-red-400 bg-red-400/20'
-      case 'Pending': return 'text-yellow-400 bg-yellow-400/20'
+      case 'Activo': return 'text-green-400 bg-green-400/20'
+      case 'Inactivo': return 'text-red-400 bg-red-400/20'
+      case 'Pendiente': return 'text-yellow-400 bg-yellow-400/20'
       default: return 'text-gray-400 bg-gray-400/20'
     }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Active': return <CheckCircle className="h-4 w-4" />
-      case 'Inactive': return <UserX className="h-4 w-4" />
-      case 'Pending': return <Clock className="h-4 w-4" />
+      case 'Activo': return <CheckCircle className="h-4 w-4" />
+      case 'Inactivo': return <UserX className="h-4 w-4" />
+      case 'Pendiente': return <Clock className="h-4 w-4" />
       default: return <AlertCircle className="h-4 w-4" />
     }
   }
@@ -176,21 +177,77 @@ export const UserManagementPage: React.FC = () => {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'Admin': return 'text-purple-400 bg-purple-400/20'
-      case 'Client': return 'text-blue-400 bg-blue-400/20'
+      case 'Cliente': return 'text-blue-400 bg-blue-400/20'
       default: return 'text-gray-400 bg-gray-400/20'
     }
   }
 
-  const handleAddUser = () => {
-    // TODO: Implement add user functionality
-    console.log('Adding user:', newUser)
-    setShowAddModal(false)
-    setNewUser({
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
-    })
+  const handleAddUser = async () => {
+    // Validate form data
+    if (!newUser.name.trim()) {
+      alert('Por favor ingrese el nombre completo')
+      return
+    }
+    
+    if (!newUser.email.trim()) {
+      alert('Por favor ingrese el correo electrónico')
+      return
+    }
+    
+    if (!newUser.password.trim()) {
+      alert('Por favor ingrese la contraseña')
+      return
+    }
+    
+    if (newUser.password !== newUser.confirmPassword) {
+      alert('Las contraseñas no coinciden')
+      return
+    }
+    
+    if (newUser.password.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+
+    setIsCreatingAdmin(true)
+
+    try {
+      // Create admin user object
+      const adminUser = {
+        name: newUser.name.trim(),
+        email: newUser.email.trim(),
+        password: newUser.password,
+        role: 'Admin' as const,
+        status: 'Activo' as const
+      }
+
+      // TODO: Replace with actual API call
+      console.log('Creating admin user:', adminUser)
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Show success message
+      alert(`Admin ${adminUser.name} creado exitosamente`)
+      
+      // Close modal and reset form
+      setShowAddModal(false)
+      setNewUser({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      })
+      
+      // TODO: Refresh user list or add to local state
+      console.log('Admin user created successfully')
+      
+    } catch (error) {
+      console.error('Error creating admin user:', error)
+      alert('Error al crear el admin. Por favor intente nuevamente.')
+    } finally {
+      setIsCreatingAdmin(false)
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -208,6 +265,14 @@ export const UserManagementPage: React.FC = () => {
   const handleEditUser = (user: User) => {
     setSelectedUser(user)
     setShowEditModal(true)
+  }
+
+  const handleDeleteUser = (user: User) => {
+    if (window.confirm(`¿Estás seguro de que quieres eliminar al usuario ${user.name}?`)) {
+      // TODO: Implement delete user functionality
+      console.log('Deleting user:', user)
+      // You can add actual delete logic here
+    }
   }
 
   const handleExportUsers = () => {
@@ -236,24 +301,24 @@ export const UserManagementPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 px-20">
+    <div className="p-4 sm:p-6 lg:px-20">
       {/* Header Actions */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Gestión de Usuarios</h2>
-          <p className="text-sm text-blue-200/80">Administrar clientes y permisos</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-white">Gestión de Usuarios</h2>
+          <p className="text-xs sm:text-sm text-blue-200/80">Administrar clientes y permisos</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
           <button 
             onClick={() => setShowAddModal(true)}
-            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-lg hover:from-green-500/30 hover:to-emerald-500/30 hover:border-green-400/50 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+            className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-lg hover:from-green-500/30 hover:to-emerald-500/30 hover:border-green-400/50 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
           >
             <UserPlus className="h-4 w-4 mr-2" />
             <span>Agregar Admin</span>
           </button>
           <button 
             onClick={handleExportUsers}
-            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-lg hover:from-blue-500/30 hover:to-purple-500/30 hover:border-blue-400/50 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+            className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-lg hover:from-blue-500/30 hover:to-purple-500/30 hover:border-blue-400/50 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
           >
             <Download className="h-4 w-4 mr-2" />
             <span>Exportar</span>
@@ -262,59 +327,59 @@ export const UserManagementPage: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-blue-200/70 font-medium mb-1">Total Usuarios</p>
-              <p className="text-2xl font-bold text-white">{users.length}</p>
+              <p className="text-xs sm:text-sm text-blue-200/70 font-medium mb-1">Total Usuarios</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{users.length}</p>
             </div>
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
-              <Users className="h-6 w-6 text-white" />
+            <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+              <Users className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-green-200/70 font-medium mb-1">Usuarios Activos</p>
-              <p className="text-2xl font-bold text-white">{users.filter(u => u.status === 'Active').length}</p>
+              <p className="text-xs sm:text-sm text-green-200/70 font-medium mb-1">Usuarios Activos</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{users.filter(u => u.status === 'Activo').length}</p>
             </div>
-            <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
-              <UserCheck className="h-6 w-6 text-white" />
+            <div className="p-2 sm:p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+              <UserCheck className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-yellow-200/70 font-medium mb-1">Pendientes</p>
-              <p className="text-2xl font-bold text-white">{users.filter(u => u.status === 'Pending').length}</p>
+              <p className="text-xs sm:text-sm text-yellow-200/70 font-medium mb-1">Pendientes</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{users.filter(u => u.status === 'Pendiente').length}</p>
             </div>
-            <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl">
-              <Clock className="h-6 w-6 text-white" />
+            <div className="p-2 sm:p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl">
+              <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-purple-200/70 font-medium mb-1">Administradores</p>
-              <p className="text-2xl font-bold text-white">{users.filter(u => u.role === 'Admin').length}</p>
+              <p className="text-xs sm:text-sm text-purple-200/70 font-medium mb-1">Administradores</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{users.filter(u => u.role === 'Admin').length}</p>
             </div>
-            <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
-              <Shield className="h-6 w-6 text-white" />
+            <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+              <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
@@ -330,14 +395,14 @@ export const UserManagementPage: React.FC = () => {
           </div>
 
           {/* Role Filter */}
-          <div className="lg:w-48 z-30">
+          <div className="sm:w-48 z-30">
             <CustomDropdown
               value={filterRole}
-              onChange={(value) => setFilterRole(value as 'All' | 'Admin' | 'Client')}
+              onChange={(value) => setFilterRole(value as 'All' | 'Admin' | 'Cliente')}
               options={[
                 { value: 'All', label: 'Todos los roles' },
                 { value: 'Admin', label: 'Administradores' },
-                { value: 'Client', label: 'Clientes' }
+                { value: 'Cliente', label: 'Clientes' }
               ]}
               placeholder="Seleccionar rol"
               isOpen={showRoleDropdown}
@@ -349,15 +414,15 @@ export const UserManagementPage: React.FC = () => {
           </div>
 
           {/* Status Filter */}
-          <div className="lg:w-48">
+          <div className="sm:w-48">
             <CustomDropdown
               value={filterStatus}
-              onChange={(value) => setFilterStatus(value as 'All' | 'Active' | 'Inactive' | 'Pending')}
+              onChange={(value) => setFilterStatus(value as 'All' | 'Activo' | 'Inactivo' | 'Pendiente')}
               options={[
                 { value: 'All', label: 'Todos los estados' },
-                { value: 'Active', label: 'Activos' },
-                { value: 'Inactive', label: 'Inactivos' },
-                { value: 'Pending', label: 'Pendientes' }
+                { value: 'Activo', label: 'Activos' },
+                { value: 'Inactivo', label: 'Inactivos' },
+                { value: 'Pendiente', label: 'Pendientes' }
               ]}
               placeholder="Seleccionar estado"
               isOpen={showStatusDropdown}
@@ -372,7 +437,8 @@ export const UserManagementPage: React.FC = () => {
 
       {/* Users Table */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm border-b border-white/10">
               <tr>
@@ -432,8 +498,11 @@ export const UserManagementPage: React.FC = () => {
                       >
                         <Edit className="h-4 w-4 text-white/60 hover:text-white" />
                       </button>
-                      <button className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200">
-                        <MoreHorizontal className="h-4 w-4 text-white/60 hover:text-white" />
+                      <button 
+                        onClick={() => handleDeleteUser(user)}
+                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors duration-200 group"
+                      >
+                        <Trash2 className="h-4 w-4 text-white/60 hover:text-red-400 group-hover:text-red-400" />
                       </button>
                     </div>
                   </td>
@@ -441,6 +510,70 @@ export const UserManagementPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="lg:hidden">
+          {filteredUsers.map((user) => (
+            <div key={user.id} className="p-4 border-b border-white/10 last:border-b-0 hover:bg-white/5 transition-colors duration-200">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">
+                      {user.name.split(' ').map(n => n[0]).join('')}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{user.name}</p>
+                    <p className="text-xs text-white/60">{user.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => handleViewUser(user)}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+                  >
+                    <Eye className="h-4 w-4 text-white/60 hover:text-white" />
+                  </button>
+                  <button 
+                    onClick={() => handleEditUser(user)}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+                  >
+                    <Edit className="h-4 w-4 text-white/60 hover:text-white" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteUser(user)}
+                    className="p-2 hover:bg-red-500/20 rounded-lg transition-colors duration-200 group"
+                  >
+                    <Trash2 className="h-4 w-4 text-white/60 hover:text-red-400 group-hover:text-red-400" />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <p className="text-white/60 mb-1">Rol</p>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                    {user.role}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-white/60 mb-1">Estado</p>
+                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
+                    {getStatusIcon(user.status)}
+                    <span className="ml-1">{user.status}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-white/60 mb-1">Último Acceso</p>
+                  <p className="text-white">{new Date(user.lastLogin).toLocaleDateString('es-MX')}</p>
+                </div>
+                <div>
+                  <p className="text-white/60 mb-1">Documentos</p>
+                  <p className="text-white font-medium">{user.documentsCount}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -454,91 +587,91 @@ export const UserManagementPage: React.FC = () => {
             }
           }}
         >
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md p-6 relative">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
             {/* Close Button */}
             <button
               onClick={() => setShowAddModal(false)}
-              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
             >
-              <XCircle className="h-5 w-5 text-white/60 hover:text-white" />
+              <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
             </button>
 
             {/* Header */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6 pr-8">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
-                  <UserPlus className="h-5 w-5 text-white" />
+                  <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Agregar Nuevo Admin</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-white">Agregar Nuevo Admin</h3>
               </div>
-              <p className="text-sm text-blue-200/80">Complete la información del usuario</p>
+              <p className="text-xs sm:text-sm text-blue-200/80">Complete la información del usuario</p>
             </div>
 
             {/* Form */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Nombre Completo</label>
+                <label className="block text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">Nombre Completo</label>
                 <input
                   type="text"
                   value={newUser.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300 text-sm sm:text-base"
                   placeholder="Ingrese el nombre completo"
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Correo Electrónico</label>
+                <label className="block text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">Correo Electrónico</label>
                 <input
                   type="email"
                   value={newUser.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300 text-sm sm:text-base"
                   placeholder="usuario@empresa.com"
                 />
               </div>
 
-
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Contraseña</label>
+                <label className="block text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">Contraseña</label>
                 <input
                   type="password"
                   value={newUser.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300 text-sm sm:text-base"
                   placeholder="Mínimo 8 caracteres"
                 />
               </div>
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Confirmar Contraseña</label>
+                <label className="block text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">Confirmar Contraseña</label>
                 <input
                   type="password"
                   value={newUser.confirmPassword}
                   onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300 text-sm sm:text-base"
                   placeholder="Repita la contraseña"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end space-x-3 mt-6">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-6">
               <button
                 onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors duration-200"
+                className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors duration-200 order-2 sm:order-1"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleAddUser}
-                className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 hover:scale-105 shadow-lg"
+                disabled={isCreatingAdmin}
+                className={`px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 hover:scale-105 shadow-lg order-1 sm:order-2 ${isCreatingAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Crear Usuario
+                {isCreatingAdmin ? 'Creando...' : 'Crear Admin'}
               </button>
             </div>
           </div>
@@ -555,37 +688,37 @@ export const UserManagementPage: React.FC = () => {
             }
           }}
         >
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md p-6 relative">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowViewModal(false)}
-              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
             >
-              <XCircle className="h-5 w-5 text-white/60 hover:text-white" />
+              <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
             </button>
 
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6 pr-8">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
-                  <Eye className="h-5 w-5 text-white" />
+                  <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Detalles del Usuario</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-white">Detalles del Usuario</h3>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-lg">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center space-x-3 p-3 sm:p-4 bg-white/5 rounded-xl">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm sm:text-lg">
                     {selectedUser.name.split(' ').map(n => n[0]).join('')}
                   </span>
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-white">{selectedUser.name}</h4>
-                  <p className="text-sm text-white/60">{selectedUser.email}</p>
+                  <h4 className="text-base sm:text-lg font-semibold text-white">{selectedUser.name}</h4>
+                  <p className="text-xs sm:text-sm text-white/60">{selectedUser.email}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="p-3 bg-white/5 rounded-xl">
                   <p className="text-xs text-white/60 mb-1">Rol</p>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(selectedUser.role)}`}>
@@ -612,10 +745,10 @@ export const UserManagementPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end mt-6">
+            <div className="flex items-center justify-end mt-4 sm:mt-6">
               <button
                 onClick={() => setShowViewModal(false)}
-                className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 hover:scale-105 shadow-lg"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 hover:scale-105 shadow-lg"
               >
                 Cerrar
               </button>
@@ -634,55 +767,55 @@ export const UserManagementPage: React.FC = () => {
             }
           }}
         >
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md p-6 relative">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowEditModal(false)}
-              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
             >
-              <XCircle className="h-5 w-5 text-white/60 hover:text-white" />
+              <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
             </button>
 
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6 pr-8">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="p-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl">
-                  <Edit className="h-5 w-5 text-white" />
+                  <Edit className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Editar Usuario</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-white">Editar Usuario</h3>
               </div>
-              <p className="text-sm text-blue-200/80">Modificar información del usuario</p>
+              <p className="text-xs sm:text-sm text-blue-200/80">Modificar información del usuario</p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Nombre Completo</label>
+                <label className="block text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">Nombre Completo</label>
                 <input
                   type="text"
                   defaultValue={selectedUser.name}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Correo Electrónico</label>
+                <label className="block text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">Correo Electrónico</label>
                 <input
                   type="email"
                   defaultValue={selectedUser.email}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Estado</label>
+                <label className="block text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">Estado</label>
                 <CustomDropdown
                   value={selectedUser.status}
                   onChange={(value) => {
                     // Update the selected user's status
-                    setSelectedUser(prev => prev ? { ...prev, status: value as 'Active' | 'Inactive' | 'Pending' } : null)
+                    setSelectedUser(prev => prev ? { ...prev, status: value as 'Activo' | 'Inactivo' | 'Pendiente' } : null)
                   }}
                   options={[
-                    { value: 'Active', label: 'Activo' },
-                    { value: 'Inactive', label: 'Inactivo' },
-                    { value: 'Pending', label: 'Pendiente' }
+                    { value: 'Activo', label: 'Activo' },
+                    { value: 'Inactivo', label: 'Inactivo' },
+                    { value: 'Pendiente', label: 'Pendiente' }
                   ]}
                   placeholder="Seleccionar estado"
                   isOpen={showEditStatusDropdown}
@@ -691,16 +824,16 @@ export const UserManagementPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end space-x-3 mt-6">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-6">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors duration-200"
+                className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors duration-200 order-2 sm:order-1"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 hover:scale-105 shadow-lg"
+                className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 hover:scale-105 shadow-lg order-1 sm:order-2"
               >
                 Guardar Cambios
               </button>

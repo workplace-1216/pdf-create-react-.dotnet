@@ -285,7 +285,7 @@ export const AdminDashboardPage: React.FC = () => {
               </Pie>
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.8)', 
+                  backgroundColor: 'rgba(216, 198, 198, 0.8)', 
                   border: '1px solid rgba(255,255,255,0.2)',
                   borderRadius: '8px',
                   color: 'white'

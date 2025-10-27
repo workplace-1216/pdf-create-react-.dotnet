@@ -22,7 +22,7 @@ interface Document {
   fileName: string
   uploader: string
   uploadDate: string
-  status: 'Processing' | 'Completed' | 'Error' | 'Pending Review'
+  status: 'Procesando' | 'Completado' | 'Error' | 'Pendiente de revisión'
   fileSize: string
   documentType: string
   extractedData: {
@@ -34,8 +34,8 @@ interface Document {
 
 export const DocumentManagementPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<'All' | 'Processing' | 'Completed' | 'Error' | 'Pending Review'>('All')
-  const [filterType, setFilterType] = useState<'All' | 'Invoice' | 'Receipt' | 'Statement'>('All')
+  const [filterStatus, setFilterStatus] = useState<'All' | 'Procesando' | 'Completado' | 'Error' | 'Pendiente de revisión'>('All')
+  const [filterType, setFilterType] = useState<'All' | 'Factura' | 'Recibo' | 'Extracto'>('All')
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
 
@@ -118,9 +118,9 @@ export const DocumentManagementPage: React.FC = () => {
       fileName: 'factura_enero_2024.pdf',
       uploader: 'María González',
       uploadDate: '2024-01-15 14:30',
-      status: 'Completed',
+      status: 'Completado',
       fileSize: '2.3 MB',
-      documentType: 'Invoice',
+      documentType: 'Factura',
       extractedData: {
         rfc: 'ABC123456789',
         periodo: '01/2024',
@@ -132,9 +132,9 @@ export const DocumentManagementPage: React.FC = () => {
       fileName: 'recibo_febrero_2024.pdf',
       uploader: 'Carlos Rodríguez',
       uploadDate: '2024-01-15 12:15',
-      status: 'Processing',
+      status: 'Procesando',
       fileSize: '1.8 MB',
-      documentType: 'Receipt',
+      documentType: 'Recibo',
       extractedData: {
         rfc: 'DEF987654321',
         periodo: '02/2024',
@@ -148,7 +148,7 @@ export const DocumentManagementPage: React.FC = () => {
       uploadDate: '2024-01-14 16:45',
       status: 'Error',
       fileSize: '3.1 MB',
-      documentType: 'Statement',
+      documentType: 'Extracto',
       extractedData: {
         rfc: 'N/A',
         periodo: 'N/A',
@@ -160,9 +160,9 @@ export const DocumentManagementPage: React.FC = () => {
       fileName: 'factura_abril_2024.pdf',
       uploader: 'Luis Hernández',
       uploadDate: '2024-01-10 09:20',
-      status: 'Pending Review',
+      status: 'Pendiente de revisión',
       fileSize: '2.7 MB',
-      documentType: 'Invoice',
+      documentType: 'Factura',
       extractedData: {
         rfc: 'GHI456789123',
         periodo: '04/2024',
@@ -174,9 +174,9 @@ export const DocumentManagementPage: React.FC = () => {
       fileName: 'recibo_mayo_2024.pdf',
       uploader: 'Patricia López',
       uploadDate: '2024-01-08 11:30',
-      status: 'Completed',
+      status: 'Completado',
       fileSize: '1.5 MB',
-      documentType: 'Receipt',
+      documentType: 'Recibo',
       extractedData: {
         rfc: 'JKL789123456',
         periodo: '05/2024',
@@ -196,29 +196,29 @@ export const DocumentManagementPage: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Completed': return 'text-green-400 bg-green-400/20'
-      case 'Processing': return 'text-blue-400 bg-blue-400/20'
+      case 'Completado': return 'text-green-400 bg-green-400/20'
+      case 'Procesando': return 'text-blue-400 bg-blue-400/20'
       case 'Error': return 'text-red-400 bg-red-400/20'
-      case 'Pending Review': return 'text-yellow-400 bg-yellow-400/20'
+      case 'Pendiente de revisión': return 'text-yellow-400 bg-yellow-400/20'
       default: return 'text-gray-400 bg-gray-400/20'
     }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Completed': return <CheckCircle className="h-4 w-4" />
-      case 'Processing': return <Clock className="h-4 w-4" />
+      case 'Completado': return <CheckCircle className="h-4 w-4" />
+      case 'Procesando': return <Clock className="h-4 w-4" />
       case 'Error': return <AlertCircle className="h-4 w-4" />
-      case 'Pending Review': return <AlertTriangle className="h-4 w-4" />
+      case 'Pendiente de revisión': return <AlertTriangle className="h-4 w-4" />
       default: return <FileText className="h-4 w-4" />
     }
   }
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'Invoice': return 'text-purple-400 bg-purple-400/20'
-      case 'Receipt': return 'text-blue-400 bg-blue-400/20'
-      case 'Statement': return 'text-green-400 bg-green-400/20'
+      case 'Factura': return 'text-purple-400 bg-purple-400/20'
+      case 'Recibo': return 'text-blue-400 bg-blue-400/20'
+      case 'Extracto': return 'text-green-400 bg-green-400/20'
       default: return 'text-gray-400 bg-gray-400/20'
     }
   }
@@ -260,7 +260,7 @@ export const DocumentManagementPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-green-200/70 font-medium mb-1">Procesados</p>
-              <p className="text-2xl font-bold text-white">{documents.filter(d => d.status === 'Completed').length}</p>
+              <p className="text-2xl font-bold text-white">{documents.filter(d => d.status === 'Completado').length}</p>
             </div>
             <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
               <FileCheck className="h-6 w-6 text-white" />
@@ -272,7 +272,7 @@ export const DocumentManagementPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-yellow-200/70 font-medium mb-1">En Proceso</p>
-              <p className="text-2xl font-bold text-white">{documents.filter(d => d.status === 'Processing').length}</p>
+              <p className="text-2xl font-bold text-white">{documents.filter(d => d.status === 'Procesando').length}</p>
             </div>
             <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl">
               <Clock className="h-6 w-6 text-white" />
@@ -314,13 +314,13 @@ export const DocumentManagementPage: React.FC = () => {
           <div className="lg:w-48">
             <CustomDropdown
               value={filterStatus}
-              onChange={(value) => setFilterStatus(value as 'All' | 'Processing' | 'Completed' | 'Error' | 'Pending Review')}
+              onChange={(value) => setFilterStatus(value as 'All' | 'Procesando' | 'Completado' | 'Error' | 'Pendiente de revisión')}
               options={[
                 { value: 'All', label: 'Todos los estados' },
-                { value: 'Completed', label: 'Completados' },
-                { value: 'Processing', label: 'En Proceso' },
+                { value: 'Completado', label: 'Completados' },
+                { value: 'Procesando', label: 'En Proceso' },
                 { value: 'Error', label: 'Con Errores' },
-                { value: 'Pending Review', label: 'Pendientes' }
+                { value: 'Pendiente de revisión', label: 'Pendientes' }
               ]}
               placeholder="Seleccionar estado"
               isOpen={showStatusDropdown}
@@ -335,12 +335,12 @@ export const DocumentManagementPage: React.FC = () => {
           <div className="lg:w-48">
             <CustomDropdown
               value={filterType}
-              onChange={(value) => setFilterType(value as 'All' | 'Invoice' | 'Receipt' | 'Statement')}
+              onChange={(value) => setFilterType(value as 'All' | 'Factura' | 'Recibo' | 'Extracto')}
               options={[
                 { value: 'All', label: 'Todos los tipos' },
-                { value: 'Invoice', label: 'Facturas' },
-                { value: 'Receipt', label: 'Recibos' },
-                { value: 'Statement', label: 'Estados de Cuenta' }
+                { value: 'Factura', label: 'Facturas' },
+                { value: 'Recibo', label: 'Recibos' },
+                { value: 'Extracto', label: 'Estados de Cuenta' }
               ]}
               placeholder="Seleccionar tipo"
               isOpen={showTypeDropdown}

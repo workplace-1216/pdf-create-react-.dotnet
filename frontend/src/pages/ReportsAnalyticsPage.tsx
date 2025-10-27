@@ -310,10 +310,12 @@ export const ReportsAnalyticsPage: React.FC = () => {
               <YAxis stroke="rgba(255,255,255,0.6)" />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.8)', 
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'rgba(0,0,0,0.9)', 
+                  border: '1px solid rgba(255,255,255,0.3)',
                   borderRadius: '8px',
-                  color: 'white'
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: '500'
                 }} 
               />
               <Legend />
@@ -343,10 +345,12 @@ export const ReportsAnalyticsPage: React.FC = () => {
               <YAxis stroke="rgba(255,255,255,0.6)" />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.8)', 
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'rgba(0,0,0,0.9)', 
+                  border: '1px solid rgba(255,255,255,0.3)',
                   borderRadius: '8px',
-                  color: 'white'
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: '500'
                 }} 
               />
               <Area type="monotone" dataKey="users" stroke="#10B981" fill="rgba(16, 185, 129, 0.2)" />
@@ -383,10 +387,12 @@ export const ReportsAnalyticsPage: React.FC = () => {
               </Pie>
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.8)', 
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'rgba(224, 216, 216, 0.9)', 
+                  border: '1px solid rgba(255,255,255,0.3)',
                   borderRadius: '8px',
-                  color: 'white'
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: '500'
                 }} 
               />
               <Legend />
@@ -409,10 +415,12 @@ export const ReportsAnalyticsPage: React.FC = () => {
               <YAxis stroke="rgba(255,255,255,0.6)" />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.8)', 
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'rgba(0,0,0,0.9)', 
+                  border: '1px solid rgba(255,255,255,0.3)',
                   borderRadius: '8px',
-                  color: 'white'
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: '500'
                 }} 
               />
               <Bar dataKey="count" fill="#3B82F6" />
