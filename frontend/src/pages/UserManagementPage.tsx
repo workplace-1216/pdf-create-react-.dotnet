@@ -37,12 +37,61 @@ export const UserManagementPage: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false)
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+  const [showEditStatusDropdown, setShowEditStatusDropdown] = useState(false)
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
   })
+
+  // Custom Dropdown Component
+  const CustomDropdown: React.FC<{
+    value: string
+    onChange: (value: string) => void
+    options: { value: string; label: string }[]
+    placeholder: string
+    isOpen: boolean
+    onToggle: () => void
+    className?: string
+  }> = ({ value, onChange, options, placeholder, isOpen, onToggle, className = '' }) => {
+    const selectedOption = options.find(option => option.value === value)
+    
+    return (
+      <div className={`relative ${className}`}>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300 hover:bg-white/15 flex items-center justify-between"
+        >
+          <span className="text-left">{selectedOption?.label || placeholder}</span>
+          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl overflow-hidden">
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value)
+                  onToggle()
+                }}
+                className={`w-full px-4 py-3 text-left text-white hover:bg-white/15 transition-colors duration-200 ${
+                  value === option.value ? 'bg-white/20' : ''
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const [users] = useState<User[]>([
     {
@@ -281,30 +330,42 @@ export const UserManagementPage: React.FC = () => {
           </div>
 
           {/* Role Filter */}
-          <div className="lg:w-48">
-            <select
+          <div className="lg:w-48 z-30">
+            <CustomDropdown
               value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value as 'All' | 'Admin' | 'Client')}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
-            >
-              <option value="All">Todos los roles</option>
-              <option value="Admin">Administradores</option>
-              <option value="Client">Clientes</option>
-            </select>
+              onChange={(value) => setFilterRole(value as 'All' | 'Admin' | 'Client')}
+              options={[
+                { value: 'All', label: 'Todos los roles' },
+                { value: 'Admin', label: 'Administradores' },
+                { value: 'Client', label: 'Clientes' }
+              ]}
+              placeholder="Seleccionar rol"
+              isOpen={showRoleDropdown}
+              onToggle={() => {
+                setShowRoleDropdown(!showRoleDropdown)
+                setShowStatusDropdown(false)
+              }}
+            />
           </div>
 
           {/* Status Filter */}
           <div className="lg:w-48">
-            <select
+            <CustomDropdown
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'All' | 'Active' | 'Inactive' | 'Pending')}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
-            >
-              <option value="All">Todos los estados</option>
-              <option value="Active">Activos</option>
-              <option value="Inactive">Inactivos</option>
-              <option value="Pending">Pendientes</option>
-            </select>
+              onChange={(value) => setFilterStatus(value as 'All' | 'Active' | 'Inactive' | 'Pending')}
+              options={[
+                { value: 'All', label: 'Todos los estados' },
+                { value: 'Active', label: 'Activos' },
+                { value: 'Inactive', label: 'Inactivos' },
+                { value: 'Pending', label: 'Pendientes' }
+              ]}
+              placeholder="Seleccionar estado"
+              isOpen={showStatusDropdown}
+              onToggle={() => {
+                setShowStatusDropdown(!showStatusDropdown)
+                setShowRoleDropdown(false)
+              }}
+            />
           </div>
         </div>
       </div>
@@ -612,14 +673,21 @@ export const UserManagementPage: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-white mb-2">Estado</label>
-                <select
-                  defaultValue={selectedUser.status}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
-                >
-                  <option value="Active" className="bg-slate-800 text-white">Activo</option>
-                  <option value="Inactive" className="bg-slate-800 text-white">Inactivo</option>
-                  <option value="Pending" className="bg-slate-800 text-white">Pendiente</option>
-                </select>
+                <CustomDropdown
+                  value={selectedUser.status}
+                  onChange={(value) => {
+                    // Update the selected user's status
+                    setSelectedUser(prev => prev ? { ...prev, status: value as 'Active' | 'Inactive' | 'Pending' } : null)
+                  }}
+                  options={[
+                    { value: 'Active', label: 'Activo' },
+                    { value: 'Inactive', label: 'Inactivo' },
+                    { value: 'Pending', label: 'Pendiente' }
+                  ]}
+                  placeholder="Seleccionar estado"
+                  isOpen={showEditStatusDropdown}
+                  onToggle={() => setShowEditStatusDropdown(!showEditStatusDropdown)}
+                />
               </div>
             </div>
 

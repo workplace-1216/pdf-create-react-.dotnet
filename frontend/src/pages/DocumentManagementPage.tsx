@@ -12,7 +12,8 @@ import {
   FileCheck,
   AlertTriangle,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  ChevronDown
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
@@ -35,6 +36,54 @@ export const DocumentManagementPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'All' | 'Processing' | 'Completed' | 'Error' | 'Pending Review'>('All')
   const [filterType, setFilterType] = useState<'All' | 'Invoice' | 'Receipt' | 'Statement'>('All')
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false)
+
+  // Custom Dropdown Component
+  const CustomDropdown: React.FC<{
+    value: string
+    onChange: (value: string) => void
+    options: { value: string; label: string }[]
+    placeholder: string
+    isOpen: boolean
+    onToggle: () => void
+    className?: string
+  }> = ({ value, onChange, options, placeholder, isOpen, onToggle, className = '' }) => {
+    const selectedOption = options.find(option => option.value === value)
+    
+    return (
+      <div className={`relative ${className}`}>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300 hover:bg-white/15 flex items-center justify-between"
+        >
+          <span className="text-left">{selectedOption?.label || placeholder}</span>
+          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl overflow-hidden">
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value)
+                  onToggle()
+                }}
+                className={`w-full px-4 py-3 text-left text-white hover:bg-white/15 transition-colors duration-200 ${
+                  value === option.value ? 'bg-white/20' : ''
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const handleExportDocuments = () => {
     // Prepare data for Excel export
@@ -263,31 +312,43 @@ export const DocumentManagementPage: React.FC = () => {
 
           {/* Status Filter */}
           <div className="lg:w-48">
-            <select
+            <CustomDropdown
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'All' | 'Processing' | 'Completed' | 'Error' | 'Pending Review')}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
-            >
-              <option value="All">Todos los estados</option>
-              <option value="Completed">Completados</option>
-              <option value="Processing">En Proceso</option>
-              <option value="Error">Con Errores</option>
-              <option value="Pending Review">Pendientes</option>
-            </select>
+              onChange={(value) => setFilterStatus(value as 'All' | 'Processing' | 'Completed' | 'Error' | 'Pending Review')}
+              options={[
+                { value: 'All', label: 'Todos los estados' },
+                { value: 'Completed', label: 'Completados' },
+                { value: 'Processing', label: 'En Proceso' },
+                { value: 'Error', label: 'Con Errores' },
+                { value: 'Pending Review', label: 'Pendientes' }
+              ]}
+              placeholder="Seleccionar estado"
+              isOpen={showStatusDropdown}
+              onToggle={() => {
+                setShowStatusDropdown(!showStatusDropdown)
+                setShowTypeDropdown(false)
+              }}
+            />
           </div>
 
           {/* Type Filter */}
           <div className="lg:w-48">
-            <select
+            <CustomDropdown
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value as 'All' | 'Invoice' | 'Receipt' | 'Statement')}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 transition-all duration-300"
-            >
-              <option value="All">Todos los tipos</option>
-              <option value="Invoice">Facturas</option>
-              <option value="Receipt">Recibos</option>
-              <option value="Statement">Estados de Cuenta</option>
-            </select>
+              onChange={(value) => setFilterType(value as 'All' | 'Invoice' | 'Receipt' | 'Statement')}
+              options={[
+                { value: 'All', label: 'Todos los tipos' },
+                { value: 'Invoice', label: 'Facturas' },
+                { value: 'Receipt', label: 'Recibos' },
+                { value: 'Statement', label: 'Estados de Cuenta' }
+              ]}
+              placeholder="Seleccionar tipo"
+              isOpen={showTypeDropdown}
+              onToggle={() => {
+                setShowTypeDropdown(!showTypeDropdown)
+                setShowStatusDropdown(false)
+              }}
+            />
           </div>
         </div>
       </div>
