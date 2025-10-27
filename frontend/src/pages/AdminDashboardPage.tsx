@@ -60,7 +60,7 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Modern Header */}
       <div className="relative z-10 bg-gradient-to-r from-white/5 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-3">
           <div className="flex items-center justify-between">
             {/* Left Side - Logo & Title */}
             <div className="flex items-center space-x-3">
@@ -98,7 +98,7 @@ export const AdminDashboardPage: React.FC = () => {
       <div className="relative w-full py-6 sm:py-10 flex-1 flex flex-col lg:flex-row gap-3 sm:gap-6 justify-center">
         <div className='flex w-[70%]'>
           {/* Left Column - Stats Cards */}
-          <div className="flex-[2] flex flex-col space-y-4 mr-5">
+          <div className="flex flex-col space-y-4 mr-5 w-full">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
               {/* Total Documents */}
@@ -137,26 +137,6 @@ export const AdminDashboardPage: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <Activity className="h-3 w-3 text-green-400" />
                     <span className="text-xs text-green-400">En línea ahora</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Templates */}
-              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg">
-                      <Settings className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-purple-200/70 font-medium">Plantillas</p>
-                      <p className="text-lg font-bold text-white">{stats.templates}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Sparkles className="h-3 w-3 text-purple-400" />
-                    <span className="text-xs text-purple-400">Configuradas</span>
                   </div>
                 </div>
               </div>
@@ -200,26 +180,6 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {/* System Health */}
-              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-blue-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-xl shadow-lg">
-                      <CheckCircle className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-green-200/70 font-medium">Salud del Sistema</p>
-                      <p className="text-lg font-bold text-white">{stats.systemHealth}%</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-green-400">Óptimo</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Quick Actions */}
@@ -236,22 +196,8 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Link
-                    to="/admin/templates"
-                    className="p-2 sm:p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 group"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
-                        <Settings className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-white group-hover:text-blue-300 transition-colors">Gestionar Plantillas</p>
-                        <p className="text-xs text-white/60">Crear y editar plantillas de procesamiento</p>
-                      </div>
-                    </div>
-                  </Link>
-
+                <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+                  
                   <Link
                     to="/admin/documents"
                     className="p-2 sm:p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 group"
@@ -296,7 +242,7 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
 
           {/* Right Column - Recent Activity */}
-          <div className="flex-[1] flex flex-col">
+          <div className="flex flex-col w-full">
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden flex flex-col relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 

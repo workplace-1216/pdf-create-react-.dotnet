@@ -334,11 +334,11 @@ const TransformationDrawer: React.FC<{
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Title</label>
+                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Título</label>
                         <p className="text-sm sm:text-base text-white mt-1">Factura Maquila Normalizada</p>
                       </div>
                       <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Author / Proveedor</label>
+                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Autora / Proveedor</label>
                         <p className="text-sm sm:text-base text-white mt-1">{document.proveedorEmail}</p>
                       </div>
                       <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
