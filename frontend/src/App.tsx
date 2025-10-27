@@ -3,10 +3,12 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { AdminDashboardPage } from './pages/AdminDashboardPage'
+import { UserManagementPage } from './pages/UserManagementPage'
+import { DocumentManagementPage } from './pages/DocumentManagementPage'
+import { ReportsAnalyticsPage } from './pages/ReportsAnalyticsPage'
 import { ClientReadyDocumentsPage } from './pages/ClientReadyDocumentsPageNew'
-import { DocumentsPage } from './pages/DocumentsPage'
 import { TemplatesPage } from './pages/TemplatesPage'
-import { Layout } from './components/Layout'
+import { AdminLayout } from './components/AdminLayout'
 import { ClientLayout } from './components/ClientLayout'
 
 function App() {
@@ -17,9 +19,9 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin" element={
             <ProtectedRoute>
-              <Layout>
+              <AdminLayout>
                 <AdminDashboardPage />
-              </Layout>
+              </AdminLayout>
             </ProtectedRoute>
           } />
           <Route path="/client" element={
@@ -29,18 +31,32 @@ function App() {
               </ClientLayout>
             </ProtectedRoute>
           } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <UserManagementPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/admin/documents" element={
             <ProtectedRoute>
-              <Layout>
-                <DocumentsPage />
-              </Layout>
+              <AdminLayout>
+                <DocumentManagementPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/reports" element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <ReportsAnalyticsPage />
+              </AdminLayout>
             </ProtectedRoute>
           } />
           <Route path="/admin/templates" element={
             <ProtectedRoute>
-              <Layout>
+              <AdminLayout>
                 <TemplatesPage />
-              </Layout>
+              </AdminLayout>
             </ProtectedRoute>
           } />
           <Route path="/" element={<Navigate to="/client" replace />} />
