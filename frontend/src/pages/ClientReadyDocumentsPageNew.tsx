@@ -55,24 +55,6 @@ const TransformationDrawer: React.FC<{
 }> = ({ isOpen, onClose, document, loading, onDownload, getDisplayValue }) => {
   const [currentPage, setCurrentPage] = useState(0)
 
-  const pages = [
-    { id: 'datos', title: 'Datos Extraídos', icon: FileText },
-    { id: 'estructura', title: 'Estructura', icon: Layers },
-    { id: 'metadatos', title: 'Metadatos', icon: Database },
-    { id: 'cumplimiento', title: 'Cumplimiento', icon: CheckSquare }
-  ]
-
-  const nextPage = () => {
-    if (currentPage < pages.length - 1) {
-      setCurrentPage(currentPage + 1)
-    }
-  }
-
-  const prevPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1)
-    }
-  }
 
   if (!isOpen) return null
 
@@ -86,29 +68,71 @@ const TransformationDrawer: React.FC<{
 
       {/* Compact Drawer */}
       <div className="fixed top-0 right-0 h-full w-full max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20 flex flex-col">
-        {/* Header with Gradient */}
-        <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-6">
+        {/* Header with Gradient and Navigation */}
+        <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-4 sm:p-6">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90"></div>
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg">
-                <Shield className="h-6 w-6 text-white" />
+          <div className="relative">
+            {/* Top Row - Title and Close */}
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg">
+                  <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">
+                    Verificación de Cumplimiento
+                  </h3>
+                  <p className="text-blue-100 text-xs sm:text-sm">
+                    {document?.fiscalData.rfcEmisor || 'Cargando...'} - {document?.fiscalData.periodo || ''}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">
-                  Verificación de Cumplimiento
-                </h3>
-                <p className="text-blue-100 text-sm">
-                  {document?.fiscalData.rfcEmisor || 'Cargando...'} - {document?.fiscalData.periodo || ''}
-                </p>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200"
+              >
+                <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              </button>
+            </div>
+            
+            {/* Bottom Row - Navigation */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xs sm:text-sm text-white/80">
+                  Sección {currentPage + 1} de 4
+                </span>
+                <div className="flex space-x-1">
+                  {[0, 1, 2, 3].map((page) => (
+                    <div
+                      key={page}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        currentPage === page
+                          ? 'bg-white'
+                          : 'bg-white/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  className="px-3 py-1.5 text-xs font-medium text-white/90 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:text-white hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                  <span className="hidden sm:inline">Anterior</span>
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Math.min(3, currentPage + 1))}
+                  disabled={currentPage === 3}
+                  className="px-3 py-1.5 text-xs font-medium text-white/90 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:text-white hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                >
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <ChevronRight className="h-3 w-3" />
+                </button>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200"
-            >
-              <XCircle className="h-6 w-6 text-white" />
-            </button>
           </div>
         </div>
 
@@ -125,117 +149,117 @@ const TransformationDrawer: React.FC<{
             </div>
           ) : document ? (
             <div className="p-6 space-y-6">
-              {/* Section 1: Datos Extraídos - Only RFC Card */}
+              {/* Section 1: Datos Extraídos - Optimized */}
               {currentPage === 0 && (
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-[101%] transition-all duration-500">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10">
-                    <div className="flex items-center mb-6">
+                    <div className="flex items-center mb-4 sm:mb-6">
                       <div className="relative">
-                        <div className="p-3 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-2xl shadow-2xl">
-                          <FileText className="h-6 w-6 text-white" />
+                        <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-xl sm:rounded-2xl shadow-2xl">
+                          <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                         </div>
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
+                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="ml-4">
-                        <h4 className="text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">1. Datos Extraídos</h4>
-                        <p className="text-sm text-blue-200/80">RFC Emisor - Extracción automática con IA</p>
+                      <div className="ml-3 sm:ml-4">
+                        <h4 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">1. Datos Extraídos</h4>
+                        <p className="text-xs sm:text-sm text-blue-200/80">Extracción automática con IA</p>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="bg-gradient-to-br from-white/10 to-blue-500/10 border border-white/20 rounded-2xl p-6 group hover:shadow-lg transition-all duration-300">
-                        <label className="text-sm font-bold text-blue-200 uppercase tracking-wider mb-3 block">RFC Emisor</label>
-                        <p className="text-2xl font-mono text-white mb-4">{getDisplayValue(document.fiscalData.rfcEmisor, "RFC")}</p>
-                        <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                      <div className="bg-gradient-to-br from-white/10 to-blue-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 group hover:shadow-lg hover:scale-[102%] transition-all duration-300">
+                        <label className="text-xs sm:text-sm font-bold text-blue-200 uppercase tracking-wider mb-2 sm:mb-3 block">RFC Emisor</label>
+                        <p className="text-lg sm:text-2xl font-mono text-white mb-3 sm:mb-4">{getDisplayValue(document.fiscalData.rfcEmisor, "RFC")}</p>
+                        <div className="space-y-1 sm:space-y-2">
                           {getDisplayValue(document.fiscalData.rfcEmisor, "RFC") === "Re-procesar" ? (
                             <div className="flex items-center space-x-2 text-orange-400">
-                              <div className="h-4 w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
+                              <div className="h-3 w-3 sm:h-4 sm:w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
                                 <span className="text-xs font-bold">!</span>
                               </div>
-                              <span className="text-sm font-semibold">⚠ Necesita re-procesamiento</span>
+                              <span className="text-xs sm:text-sm font-semibold">⚠ Necesita re-procesamiento</span>
                             </div>
                           ) : (
                             <>
                               <div className="flex items-center space-x-2 text-green-400">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm font-medium">✓ Extraído automáticamente con 95% de confianza</span>
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm font-medium">✓ Extraído con 95% confianza</span>
                               </div>
                               <div className="flex items-center space-x-2 text-blue-300">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm font-medium">✓ Normalizado y validado por el sistema</span>
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm font-medium">✓ Normalizado y validado</span>
                               </div>
                             </>
                           )}
                         </div>
                       </div>
 
-                      <div className="bg-gradient-to-br from-white/10 to-green-500/10 border border-white/20 rounded-2xl p-6 group hover:shadow-lg transition-all duration-300">
-                        <label className="text-sm font-bold text-green-200 uppercase tracking-wider mb-3 block">Período Declarado</label>
-                        <p className="text-2xl text-white mb-4">{getDisplayValue(document.fiscalData.periodo, "PERIODO")}</p>
-                        <div className="space-y-2">
+                      <div className="bg-gradient-to-br from-white/10 to-green-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 group hover:shadow-lg hover:scale-[102%] transition-all duration-300">
+                        <label className="text-xs sm:text-sm font-bold text-green-200 uppercase tracking-wider mb-2 sm:mb-3 block">Período Declarado</label>
+                        <p className="text-lg sm:text-2xl text-white mb-3 sm:mb-4">{getDisplayValue(document.fiscalData.periodo, "PERIODO")}</p>
+                        <div className="space-y-1 sm:space-y-2">
                           {getDisplayValue(document.fiscalData.periodo, "PERIODO") === "Re-procesar" ? (
                             <div className="flex items-center space-x-2 text-orange-400">
-                              <div className="h-4 w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
+                              <div className="h-3 w-3 sm:h-4 sm:w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
                                 <span className="text-xs font-bold">!</span>
                               </div>
-                              <span className="text-sm font-semibold">⚠ Necesita re-procesamiento</span>
+                              <span className="text-xs sm:text-sm font-semibold">⚠ Necesita re-procesamiento</span>
                             </div>
                           ) : (
                             <>
                               <div className="flex items-center space-x-2 text-green-400">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm font-medium">✓ Extraído automáticamente con 88% de confianza</span>
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm font-medium">✓ Extraído con 88% confianza</span>
                               </div>
                               <div className="flex items-center space-x-2 text-blue-300">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm font-medium">✓ Normalizado y validado por el sistema</span>
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm font-medium">✓ Normalizado y validado</span>
                               </div>
                             </>
                           )}
                         </div>
                       </div>
 
-                      <div className="bg-gradient-to-br from-white/10 to-purple-500/10 border border-white/20 rounded-2xl p-6 group hover:shadow-lg transition-all duration-300">
-                        <label className="text-sm font-bold text-purple-200 uppercase tracking-wider mb-3 block">Monto Total (MXN)</label>
-                        <p className="text-2xl font-bold text-white mb-4">{getDisplayValue(document.fiscalData.montoTotalMxn, "MONTO")}</p>
-                        <div className="space-y-2">
+                      <div className="bg-gradient-to-br from-white/10 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 group hover:shadow-lg hover:scale-[102%] transition-all duration-300">
+                        <label className="text-xs sm:text-sm font-bold text-purple-200 uppercase tracking-wider mb-2 sm:mb-3 block">Monto Total (MXN)</label>
+                        <p className="text-lg sm:text-2xl font-bold text-white mb-3 sm:mb-4">{getDisplayValue(document.fiscalData.montoTotalMxn, "MONTO")}</p>
+                        <div className="space-y-1 sm:space-y-2">
                           {getDisplayValue(document.fiscalData.montoTotalMxn, "MONTO") === "Re-procesar" ? (
                             <div className="flex items-center space-x-2 text-orange-400">
-                              <div className="h-4 w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
+                              <div className="h-3 w-3 sm:h-4 sm:w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
                                 <span className="text-xs font-bold">!</span>
                               </div>
-                              <span className="text-sm font-semibold">⚠ Necesita re-procesamiento</span>
+                              <span className="text-xs sm:text-sm font-semibold">⚠ Necesita re-procesamiento</span>
                             </div>
                           ) : (
                             <>
                               <div className="flex items-center space-x-2 text-green-400">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm font-medium">✓ Extraído automáticamente con 92% de confianza</span>
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm font-medium">✓ Extraído con 92% confianza</span>
                               </div>
                               <div className="flex items-center space-x-2 text-blue-300">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm font-medium">✓ Formato estandarizado y validado</span>
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm font-medium">✓ Formato estandarizado</span>
                               </div>
                             </>
                           )}
                         </div>
                       </div>
 
-                      <div className="bg-gradient-to-br from-white/10 to-indigo-500/10 border border-white/20 rounded-2xl p-6 group hover:shadow-lg transition-all duration-300">
-                        <label className="text-sm font-bold text-indigo-200 uppercase tracking-wider mb-3 block">Método de Extracción</label>
-                        <p className="text-lg font-semibold text-white mb-4">Análisis de patrones + IA</p>
+                      <div className="bg-gradient-to-br from-white/10 to-indigo-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 group hover:shadow-lg hover:scale-[102%] transition-all duration-300">
+                        <label className="text-xs sm:text-sm font-bold text-indigo-200 uppercase tracking-wider mb-2 sm:mb-3 block">Método de Extracción</label>
+                        <p className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Análisis de patrones + IA</p>
                         <div className="flex items-center space-x-2 text-green-400">
-                          <CheckCircle className="h-4 w-4" />
-                          <span className="text-sm font-medium">✓ Validación automática</span>
+                          <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="text-xs sm:text-sm font-medium">✓ Validación automática</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Why it matters section */}
-                    <div className="mt-8 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/30 rounded-2xl p-6">
-                      <h5 className="text-lg font-bold text-green-300 mb-3">¿Por qué es importante?</h5>
-                      <p className="text-white/80 leading-relaxed">
+                    <div className="mt-6 sm:mt-8 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                      <h5 className="text-base sm:text-lg font-bold text-green-300 mb-2 sm:mb-3">¿Por qué es importante?</h5>
+                      <p className="text-sm sm:text-base text-white/80 leading-relaxed">
                         Esta extracción automatizada garantiza que los datos que vas a reportar a las autoridades fiscales
                         son exactamente los que el sistema detectó en el documento original, eliminando errores de transcripción
                         manual y proporcionando confianza total en la integridad de los datos.
@@ -245,171 +269,177 @@ const TransformationDrawer: React.FC<{
                 </div>
               )}
 
-              {/* Section 2: Estructura del Documento */}
-              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center mb-6">
-                    <div className="relative">
-                      <div className="p-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 rounded-2xl shadow-2xl">
-                        <Layers className="h-6 w-6 text-white" />
+              {/* Section 2: Estructura del Documento - Optimized */}
+              {currentPage === 1 && (
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-[101%] transition-all duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <div className="relative z-10">
+                    <div className="flex items-center mb-4 sm:mb-6">
+                      <div className="relative">
+                        <div className="p-2 sm:p-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 rounded-xl sm:rounded-2xl shadow-2xl">
+                          <Layers className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
+                      <div className="ml-3 sm:ml-4">
+                        <h4 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">2. Estructura del Documento</h4>
+                        <p className="text-xs sm:text-sm text-green-200/80">Modificaciones aplicadas al layout físico</p>
+                      </div>
                     </div>
-                    <div className="ml-4">
-                      <h4 className="text-xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">2. Estructura del Documento</h4>
-                      <p className="text-sm text-green-200/80">Modificaciones aplicadas al layout físico</p>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-xs font-medium text-green-200 uppercase tracking-wider">Páginas Incluidas en la Versión Final</label>
-                      <p className="text-sm text-white mt-1">Portada estandarizada + Página 1 del documento original + Resumen</p>
-                      <p className="text-xs text-green-200/70 mt-1">Se eliminaron 2 páginas adicionales no requeridas</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
-                        <span className="text-sm text-white">Carátula estándar añadida</span>
+                    <div className="space-y-3 sm:space-y-4">
+                      <div>
+                        <label className="text-xs font-medium text-green-200 uppercase tracking-wider">Páginas Incluidas en la Versión Final</label>
+                        <p className="text-sm sm:text-base text-white mt-1">Portada estandarizada + Página 1 del documento original + Resumen</p>
+                        <p className="text-xs sm:text-sm text-green-200/70 mt-1">Se eliminaron 2 páginas adicionales no requeridas</p>
                       </div>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
-                        <span className="text-sm text-white">Pie de página con trazabilidad</span>
-                      </div>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
-                        <span className="text-sm text-white">Formularios interactivos eliminados</span>
-                      </div>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
-                        <span className="text-sm text-white">JavaScript/adjuntos eliminados</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2 sm:mr-3" />
+                          <span className="text-xs sm:text-sm text-white">Carátula estándar añadida</span>
+                        </div>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2 sm:mr-3" />
+                          <span className="text-xs sm:text-sm text-white">Pie de página con trazabilidad</span>
+                        </div>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2 sm:mr-3" />
+                          <span className="text-xs sm:text-sm text-white">Formularios interactivos eliminados</span>
+                        </div>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2 sm:mr-3" />
+                          <span className="text-xs sm:text-sm text-white">JavaScript/adjuntos eliminados</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Section 3: Metadatos Aplicados */}
-              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center mb-6">
-                    <div className="relative">
-                      <div className="p-3 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 rounded-2xl shadow-2xl">
-                        <Database className="h-6 w-6 text-white" />
+              {/* Section 3: Metadatos Aplicados - Optimized */}
+              {currentPage === 2 && (
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-[101%] transition-all duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <div className="relative z-10">
+                    <div className="flex items-center mb-4 sm:mb-6">
+                      <div className="relative">
+                        <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 rounded-xl sm:rounded-2xl shadow-2xl">
+                          <Database className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse"></div>
+                      <div className="ml-3 sm:ml-4">
+                        <h4 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">3. Metadatos Aplicados</h4>
+                        <p className="text-xs sm:text-sm text-purple-200/80">Campos estandarizados escritos en el PDF</p>
+                      </div>
                     </div>
-                    <div className="ml-4">
-                      <h4 className="text-xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">3. Metadatos Aplicados</h4>
-                      <p className="text-sm text-purple-200/80">Campos estandarizados escritos en el PDF</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Title</label>
-                      <p className="text-sm text-white mt-1">Factura Maquila Normalizada</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Author / Proveedor</label>
-                      <p className="text-sm text-white mt-1">{document.proveedorEmail}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">RFC_Emisor (embebido)</label>
-                      <p className="text-sm font-mono text-white mt-1">{document.fiscalData.rfcEmisor}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Período (embebido)</label>
-                      <p className="text-sm text-white mt-1">{document.fiscalData.periodo}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Fecha de Normalización UTC</label>
-                      <p className="text-sm text-white mt-1">{new Date(document.readyAtUtc).toLocaleString('es-MX')}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Sistema Generador</label>
-                      <p className="text-sm text-white mt-1">PDF Portal v1.0 - Sello Interno</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Title</label>
+                        <p className="text-sm sm:text-base text-white mt-1">Factura Maquila Normalizada</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Author / Proveedor</label>
+                        <p className="text-sm sm:text-base text-white mt-1">{document.proveedorEmail}</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">RFC_Emisor (embebido)</label>
+                        <p className="text-sm sm:text-base font-mono text-white mt-1">{document.fiscalData.rfcEmisor}</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Período (embebido)</label>
+                        <p className="text-sm sm:text-base text-white mt-1">{document.fiscalData.periodo}</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Fecha de Normalización UTC</label>
+                        <p className="text-sm sm:text-base text-white mt-1">{new Date(document.readyAtUtc).toLocaleString('es-MX')}</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Sistema Generador</label>
+                        <p className="text-sm sm:text-base text-white mt-1">PDF Portal v1.0 - Sello Interno</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Section 4: Cumplimiento Técnico de Formato */}
-              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center mb-6">
-                    <div className="relative">
-                      <div className="p-3 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-2xl shadow-2xl">
-                        <CheckSquare className="h-6 w-6 text-white" />
+              {/* Section 4: Cumplimiento Técnico de Formato - Optimized */}
+              {currentPage === 3 && (
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-[101%] transition-all duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <div className="relative z-10">
+                    <div className="flex items-center mb-4 sm:mb-6">
+                      <div className="relative">
+                        <div className="p-2 sm:p-3 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-xl sm:rounded-2xl shadow-2xl">
+                          <CheckSquare className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-pulse"></div>
-                    </div>
-                    <div className="ml-4">
-                      <h4 className="text-xl font-bold bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent">4. Cumplimiento Técnico de Formato</h4>
-                      <p className="text-sm text-orange-200/80">Verificación para sistemas gubernamentales</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between py-2 border-b border-white/10">
-                      <span className="text-sm text-white">Archivo es PDF válido</span>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-                        <span className="text-xs text-green-400">✓ Cumple</span>
+                      <div className="ml-3 sm:ml-4">
+                        <h4 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent">4. Cumplimiento Técnico de Formato</h4>
+                        <p className="text-xs sm:text-sm text-orange-200/80">Verificación para sistemas gubernamentales</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/10">
-                      <span className="text-sm text-white">Escala de grises 8 bits</span>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-                        <span className="text-xs text-green-400">✓ Cumple</span>
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-white">Archivo es PDF válido</span>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
+                          <span className="text-xs text-green-400">✓ Cumple</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/10">
-                      <span className="text-sm text-white">Resolución 300 DPI</span>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-                        <span className="text-xs text-green-400">✓ Cumple</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-white">Escala de grises 8 bits</span>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
+                          <span className="text-xs text-green-400">✓ Cumple</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/10">
-                      <span className="text-sm text-white">Tamaño ≤ 3 MB</span>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-                        <span className="text-xs text-green-400">✓ Cumple</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-white">Resolución 300 DPI</span>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
+                          <span className="text-xs text-green-400">✓ Cumple</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/10">
-                      <span className="text-sm text-white">Sin formularios interactivos</span>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-                        <span className="text-xs text-green-400">✓ Cumple</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-white">Tamaño ≤ 3 MB</span>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
+                          <span className="text-xs text-green-400">✓ Cumple</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/10">
-                      <span className="text-sm text-white">Sin JavaScript incrustado</span>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-                        <span className="text-xs text-green-400">✓ Cumple</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-white">Sin formularios interactivos</span>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
+                          <span className="text-xs text-green-400">✓ Cumple</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-white/10">
-                      <span className="text-sm text-white">Sin contraseñas</span>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-                        <span className="text-xs text-green-400">✓ Cumple</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-white">Sin JavaScript incrustado</span>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
+                          <span className="text-xs text-green-400">✓ Cumple</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-sm text-white">Metadatos obligatorios presentes</span>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-                        <span className="text-xs text-green-400">✓ Cumple</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-white">Sin contraseñas</span>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
+                          <span className="text-xs text-green-400">✓ Cumple</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between py-2 sm:py-3 hover:bg-white/5 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-white">Metadatos obligatorios presentes</span>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
+                          <span className="text-xs text-green-400">✓ Cumple</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">
@@ -419,9 +449,9 @@ const TransformationDrawer: React.FC<{
         </div>
 
         {/* Footer with Download Actions */}
-        <div className="border-t border-white/20 p-6 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90 backdrop-blur-xl">
+        <div className="border-t border-white/20 p-6 py-4 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90 backdrop-blur-xl">
           <div className="flex justify-between items-center">
-            <div className="text-sm text-white/80">
+            <div className="text-sm lg:block hidden text-white/80 w-1/2">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="relative">
                   <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
@@ -431,24 +461,18 @@ const TransformationDrawer: React.FC<{
               </div>
               <p className="text-xs text-blue-200/70">Todas las transformaciones aplicadas exitosamente</p>
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2.5 text-sm font-medium text-white/90 bg-white/10 border border-white/20 rounded-xl hover:bg-white/20 hover:text-white hover:border-white/30 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
-              >
-                Cerrar
-              </button>
+            <div className="flex space-x-2 sm:space-x-3 justify-end w-full">
               <button
                 onClick={() => {
                   if (document) {
                     onDownload(document.id)
                   }
                 }}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 border border-transparent rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-blue-500/25"
+                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 border border-transparent rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-blue-500/25"
               >
                 <div className="flex items-center space-x-2">
                   <Download className="h-4 w-4" />
-                  <span>Descargar PDF Final</span>
+                  <span className="hidden sm:inline">Descargar PDF Final</span>
                 </div>
               </button>
               <button
@@ -470,11 +494,11 @@ const TransformationDrawer: React.FC<{
                     URL.revokeObjectURL(url)
                   }
                 }}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 border border-transparent rounded-xl hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-green-500/25"
+                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 border border-transparent rounded-xl hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-green-500/25"
               >
                 <div className="flex items-center space-x-2">
                   <FileText className="h-4 w-4" />
-                  <span>Descargar Datos (JSON)</span>
+                  <span className="hidden sm:inline">Descargar Datos (JSON)</span>
                 </div>
               </button>
             </div>
@@ -858,10 +882,10 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-pulse delay-1000"></div>
       </div>
 
-      {/* Modern Header */}
-      <div className="relative z-10 bg-gradient-to-r from-white/5 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3">
-          <div className="flex items-center justify-between">
+        {/* Modern Header */}
+        <div className="sticky top-0 z-50 bg-gradient-to-r from-white/5 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/20">
+        <div className="w-full flex justify-center sm:px-6 lg:px-8 py-2 sm:py-3">
+          <div className="flex items-center justify-between w-[90%] sm:w-[70%]">
             {/* Left Side - Logo & Title */}
             <div className="flex items-center space-x-3">
               <div className="relative group">
@@ -893,11 +917,11 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative w-full py-6 sm:py-10 flex-1 flex flex-col lg:flex-row gap-3 sm:gap-6 justify-center">
-        <div className='flex w-[70%]'>
+      <div className="relative w-full py-6 sm:py-10 flex-1 flex flex-row lg:flex-row gap-3 sm:gap-6 justify-center">
+        <div className='flex w-[90%] sm:w-[70%]'>
           {/* Left Column - Upload Section + Stats */}
           <div className="w-full gap-3 sm:gap-4">
-            <div className='w-full flex flex-row'>
+            <div className='w-full flex flex-col lg:flex-row sm:flex-col'>
               {/* Modern Upload Section */}
               <div className="w-full bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 mb-3 sm:mb-6 relative overflow-auto group hover:bg-white/15 transition-all duration-500">
                 {/* Glassmorphism Effect */}
@@ -989,9 +1013,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               </div>
 
               {/* Modern Stats Cards */}
-              <div className="w-full ml-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4 mb-3 sm:mb-6">
+              <div className="w-full lg:ml-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4 mb-3 sm:mb-6">
                 {/* Documents Processed */}
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-105 transition-all duration-500 group relative overflow-hidden">
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between">
@@ -1012,7 +1036,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 </div>
 
                 {/* Compliance Rate */}
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-105 transition-all duration-500 group relative overflow-hidden">
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between">
@@ -1035,7 +1059,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 </div>
 
                 {/* Partial Compliance */}
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-105 transition-all duration-500 group relative overflow-hidden">
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-amber-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between">
@@ -1058,7 +1082,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 </div>
 
                 {/* Non-Compliant */}
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-105 transition-all duration-500 group relative overflow-hidden">
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-rose-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between">
@@ -1083,9 +1107,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
             </div>
 
             {/* Right Column - Document List */}
-            <div className="flex-1 flex flex-col h-full mb-5">
+            <div className="flex flex-col mb-5">
               {/* Modern Document List */}
-              <div className="flex-1 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden flex flex-col relative group">
+              <div className="flex bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden flex flex-col relative group">
                 {/* Glassmorphism Effect */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
                 <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -1106,9 +1130,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       </div>
                     </div>
                     <button
-                      onClick={fetchReadyDocuments}
+                      onClick={() => fetchReadyDocuments(pagination.page)}
                       disabled={loading}
-                      className="relative px-3 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 border border-transparent rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-blue-500/25 hover:scale-105 transition-all duration-300"
+                      className="relative px-3 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 border border-transparent rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-blue-500/25 hover:scale-[101%] transition-all duration-300"
                     >
                       {loading ? (
                         <>
@@ -1125,18 +1149,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                         </>
                       )}
                     </button>
-                  </div>
-
-                  {/* Modern System Notice */}
-                  <div className="relative z-10 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3 backdrop-blur-sm">
-                    <div className="flex items-center">
-                      <div className="relative mr-2 sm:mr-3">
-                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
-                      </div>
-                      <p className="text-xs sm:text-sm text-blue-200 font-medium">
-                        Datos extraídos automáticamente por el sistema
-                      </p>
-                    </div>
                   </div>
 
                   {/* Modern Re-processing Notice */}
@@ -1292,16 +1304,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                                   >
                                     <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                                     <span className="hidden sm:inline">Ver</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDownload(doc.id)
-                                    }}
-                                    className="px-2 sm:px-3 py-1 sm:py-2 text-green-300 hover:text-green-100 hover:bg-green-500/20 rounded-lg flex items-center text-xs font-medium transition-all duration-300 hover:scale-105"
-                                  >
-                                    <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                                    <span className="hidden sm:inline">Descargar</span>
                                   </button>
                                 </div>
                               </td>

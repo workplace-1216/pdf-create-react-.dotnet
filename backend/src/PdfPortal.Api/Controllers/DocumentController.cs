@@ -299,7 +299,7 @@ public class DocumentController : ControllerBase
                 d => d.Status == ProcessedDocumentStatus.Approved,
                 skip: (page - 1) * pageSize,
                 take: pageSize,
-                orderBy: d => d.UpdatedAtUtc ?? d.CreatedAtUtc,
+                orderBy: d => d.CreatedAt,
                 orderByDescending: true);
 
             var readyDocuments = new List<ClientReadyDocumentDto>();
