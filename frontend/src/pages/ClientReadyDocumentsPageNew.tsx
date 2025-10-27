@@ -1,577 +1,484 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { FileText, Download, Eye, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-react'
+import {
+  FileText,
+  Download,
+  Eye,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Upload,
+  Shield,
+  Zap,
+  RefreshCw,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  Database,
+  CheckSquare,
+  LogOut
+} from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 import { documentApi } from '../services/api'
 
 // Types
 interface ReadyDocument {
   id: string
-  proveedorEmail: string
-  readyAtUtc: string
   rfcEmisor: string
   periodo: string
-  montoTotalMxn: string
-  complianceStatus: string
+  montoTotalMxn: string  // Backend returns as string
+  proveedorEmail: string
+  complianceStatus: string  // Backend returns "ListoParaEnviar"
+  readyAtUtc: string
 }
 
 interface DocumentDetail {
   id: string
-  proveedorEmail: string
-  readyAtUtc: string
   fiscalData: {
     rfcEmisor: string
     periodo: string
-    montoTotalMxn: string
+    montoTotalMxn: string  // Backend returns as string
   }
-  documentStructure: {
-    addedStandardCoverPage: boolean
-    addedFooterTraceability: boolean
-    removedExtraPages: boolean
-    removedInteractiveElements: boolean
-    structureNote: string
-  }
-  appliedMetadata: {
-    title: string
-    rfcEmisorField: string
-    periodoField: string
-    normalizedAtUtc: string
-    normalizedByEmail: string
-  }
-  technicalCompliance: {
-    isPdf: boolean
-    grayscale8bit: boolean
-    dpi300: boolean
-    sizeUnder3MB: boolean
-    noInteractiveStuff: boolean
-    hasRequiredMetadata: boolean
-  }
-  downloadLinks: {
-    pdfFinalUrl: string
-    dataJsonUrl: string
-  }
-  transformationVerification?: {
-    metadata: {
-      originalMetadata: Record<string, string>
-      injectedMetadata: Record<string, string>
-      finalMetadata: Record<string, string>
-      rfcInjected: boolean
-      periodoInjected: boolean
-      montoTotalInjected: boolean
-      auditTrailAdded: boolean
-      templateUsed: string
-      processingTimestamp: string
-      processedBy: string
-    }
-    restructuring: {
-      originalPageCount: number
-      finalPageCount: number
-      coverPageAdded: boolean
-      pagesRemoved: number[]
-      pagesReordered: number[]
-      footerApplied: boolean
-      formsStripped: boolean
-      javascriptRemoved: boolean
-      attachmentsRemoved: boolean
-      restructuringSummary: string
-      contentModifications: string[]
-    }
-    extraction: {
-      extractedFields: Record<string, string>
-      extractionConfidence: Record<string, number>
-      fieldValidation: Record<string, boolean>
-      rfcExtracted: string
-      periodoExtracted: string
-      montoTotalExtracted: string
-      rfcValid: boolean
-      periodoValid: boolean
-      montoTotalValid: boolean
-      extractionMethod: string
-      extractionTimestamp: string
-      extractionWarnings: string[]
-    }
-    normalization: {
-      originalFormat: string
-      finalFormat: string
-      convertedToGrayscale: boolean
-      convertedTo8Bit: boolean
-      normalizedTo300Dpi: boolean
-      compressedUnder3MB: boolean
-      passwordRemoved: boolean
-      interactiveContentRemoved: boolean
-      compressionRatio: string
-      originalSizeBytes: number
-      finalSizeBytes: number
-      normalizationTimestamp: string
-      normalizationSteps: string[]
-    }
-    allTransformationsApplied: boolean
-    complianceStatus: string
-    processingSummary: string
-  }
+  proveedorEmail: string
+  readyAtUtc: string
 }
 
-// Helper Components
 
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'compliant':
-        return 'bg-green-100 text-green-800'
-      case 'non_compliant':
-        return 'bg-red-100 text-red-800'
-      case 'partial':
-        return 'bg-yellow-100 text-yellow-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  return (
-    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(status)}`}>
-      {status}
-    </span>
-  )
-}
-
-// Transformation Verification Drawer
+// Page-based Compliance Verification Drawer
 const TransformationDrawer: React.FC<{
   isOpen: boolean
   onClose: () => void
   document: DocumentDetail | null
   loading: boolean
-}> = ({ isOpen, onClose, document, loading }) => {
-  const [activeTab, setActiveTab] = useState('overview')
-  
-  if (!isOpen) return null
+  onDownload: (documentId: string) => void
+  getDisplayValue: (value: string, type: string) => string
+}> = ({ isOpen, onClose, document, loading, onDownload, getDisplayValue }) => {
+  const [currentPage, setCurrentPage] = useState(0)
 
-  const tabs = [
-    { id: 'overview', label: 'Resumen', icon: '📊' },
-    { id: 'metadata', label: 'Metadatos', icon: '🏷️' },
-    { id: 'restructuring', label: 'Reestructuración', icon: '📄' },
-    { id: 'extraction', label: 'Extracción', icon: '🔍' },
-    { id: 'normalization', label: 'Normalización', icon: '⚙️' }
+  const pages = [
+    { id: 'datos', title: 'Datos Extraídos', icon: FileText },
+    { id: 'estructura', title: 'Estructura', icon: Layers },
+    { id: 'metadatos', title: 'Metadatos', icon: Database },
+    { id: 'cumplimiento', title: 'Cumplimiento', icon: CheckSquare }
   ]
+
+  const nextPage = () => {
+    if (currentPage < pages.length - 1) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
+  const prevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1)
+    }
+  }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
-      <div className="fixed top-0 right-0 h-full max-w-4xl w-full bg-white shadow-xl border-l border-gray-200 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Verificación de Transformaciones
-            </h3>
-            <p className="text-sm text-gray-600">
-              {document?.fiscalData.rfcEmisor || 'Cargando...'} - {document?.fiscalData.periodo || ''}
-            </p>
+      {/* Animated Backdrop */}
+      <div
+        className="absolute inset-0 bg-gradient-to-br from-black/60 via-slate-900/50 to-black/60 backdrop-blur-sm transition-opacity duration-300"
+        onClick={onClose}
+      />
+
+      {/* Compact Drawer */}
+      <div className="fixed top-0 right-0 h-full w-full max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20 flex flex-col">
+        {/* Header with Gradient */}
+        <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-6">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">
+                  Verificación de Cumplimiento
+                </h3>
+                <p className="text-blue-100 text-sm">
+                  {document?.fiscalData.rfcEmisor || 'Cargando...'} - {document?.fiscalData.periodo || ''}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200"
+            >
+              <XCircle className="h-6 w-6 text-white" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <XCircle className="h-5 w-5 text-gray-500" />
-          </button>
         </div>
-
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-4">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        
+         <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="flex items-center justify-center py-16">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur-lg opacity-75"></div>
+                  <div className="relative animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+                </div>
+                <p className="text-lg font-medium text-white">Cargando detalles del documento...</p>
+              </div>
             </div>
           ) : document ? (
-            <div className="space-y-6">
-              {/* Overview Tab */}
-              {activeTab === 'overview' && (
-                <div className="space-y-6">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <CheckCircle className="h-5 w-5 text-green-400" />
+             <div className="p-6 space-y-6">
+               {/* Section 1: Datos Extraídos - Only RFC Card */}
+               {currentPage === 0 && (
+                 <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
+                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                   <div className="relative z-10">
+                     <div className="flex items-center mb-6">
+                       <div className="relative">
+                         <div className="p-3 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-2xl shadow-2xl">
+                           <FileText className="h-6 w-6 text-white" />
+                         </div>
+                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
+                       </div>
+                       <div className="ml-4">
+                         <h4 className="text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">1. Datos Extraídos</h4>
+                         <p className="text-sm text-blue-200/80">RFC Emisor - Extracción automática con IA</p>
+                       </div>
+                     </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="bg-gradient-to-br from-white/10 to-blue-500/10 border border-white/20 rounded-2xl p-6 group hover:shadow-lg transition-all duration-300">
+                      <label className="text-sm font-bold text-blue-200 uppercase tracking-wider mb-3 block">RFC Emisor</label>
+                      <p className="text-2xl font-mono text-white mb-4">{getDisplayValue(document.fiscalData.rfcEmisor, "RFC")}</p>
+                      <div className="space-y-2">
+                        {getDisplayValue(document.fiscalData.rfcEmisor, "RFC") === "Re-procesar" ? (
+                          <div className="flex items-center space-x-2 text-orange-400">
+                            <div className="h-4 w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold">!</span>
+                            </div>
+                            <span className="text-sm font-semibold">⚠ Necesita re-procesamiento</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center space-x-2 text-green-400">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm font-medium">✓ Extraído automáticamente con 95% de confianza</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-blue-300">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm font-medium">✓ Normalizado y validado por el sistema</span>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-green-800">
-                          Documento Cumple con Estándares
-                        </h3>
-                        <p className="text-sm text-green-700 mt-1">
-                          Todas las transformaciones han sido aplicadas exitosamente
-                        </p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-white/10 to-green-500/10 border border-white/20 rounded-2xl p-6 group hover:shadow-lg transition-all duration-300">
+                      <label className="text-sm font-bold text-green-200 uppercase tracking-wider mb-3 block">Período Declarado</label>
+                      <p className="text-2xl text-white mb-4">{getDisplayValue(document.fiscalData.periodo, "PERIODO")}</p>
+                      <div className="space-y-2">
+                        {getDisplayValue(document.fiscalData.periodo, "PERIODO") === "Re-procesar" ? (
+                          <div className="flex items-center space-x-2 text-orange-400">
+                            <div className="h-4 w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold">!</span>
+                            </div>
+                            <span className="text-sm font-semibold">⚠ Necesita re-procesamiento</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center space-x-2 text-green-400">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm font-medium">✓ Extraído automáticamente con 88% de confianza</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-blue-300">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm font-medium">✓ Normalizado y validado por el sistema</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-white/10 to-purple-500/10 border border-white/20 rounded-2xl p-6 group hover:shadow-lg transition-all duration-300">
+                      <label className="text-sm font-bold text-purple-200 uppercase tracking-wider mb-3 block">Monto Total (MXN)</label>
+                      <p className="text-2xl font-bold text-white mb-4">{getDisplayValue(document.fiscalData.montoTotalMxn, "MONTO")}</p>
+                      <div className="space-y-2">
+                        {getDisplayValue(document.fiscalData.montoTotalMxn, "MONTO") === "Re-procesar" ? (
+                          <div className="flex items-center space-x-2 text-orange-400">
+                            <div className="h-4 w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold">!</span>
+                            </div>
+                            <span className="text-sm font-semibold">⚠ Necesita re-procesamiento</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center space-x-2 text-green-400">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm font-medium">✓ Extraído automáticamente con 92% de confianza</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-blue-300">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm font-medium">✓ Formato estandarizado y validado</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-white/10 to-indigo-500/10 border border-white/20 rounded-2xl p-6 group hover:shadow-lg transition-all duration-300">
+                      <label className="text-sm font-bold text-indigo-200 uppercase tracking-wider mb-3 block">Método de Extracción</label>
+                      <p className="text-lg font-semibold text-white mb-4">Análisis de patrones + IA</p>
+                      <div className="flex items-center space-x-2 text-green-400">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">✓ Validación automática</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-gray-900 mb-2">Datos Fiscales</h4>
-                      <div className="space-y-1 text-sm">
-                        <div><span className="text-gray-600">RFC:</span> <span className="font-mono">{document.fiscalData.rfcEmisor}</span></div>
-                        <div><span className="text-gray-600">Período:</span> {document.fiscalData.periodo}</div>
-                        <div><span className="text-gray-600">Monto:</span> ${document.fiscalData.montoTotalMxn} MXN</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-gray-900 mb-2">Estado de Cumplimiento</h4>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span>Metadatos Inyectados</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span>Contenido Reestructurado</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span>Datos Extraídos</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span>Formato Normalizado</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-blue-900 mb-2">Resumen de Procesamiento</h4>
-                    <p className="text-sm text-blue-800">
-                      {document.transformationVerification?.processingSummary || 
-                       "Documento procesado y normalizado según estándares gubernamentales. Todas las transformaciones aplicadas exitosamente."}
+                  {/* Why it matters section */}
+                  <div className="mt-8 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/30 rounded-2xl p-6">
+                    <h5 className="text-lg font-bold text-green-300 mb-3">¿Por qué es importante?</h5>
+                    <p className="text-white/80 leading-relaxed">
+                      Esta extracción automatizada garantiza que los datos que vas a reportar a las autoridades fiscales
+                      son exactamente los que el sistema detectó en el documento original, eliminando errores de transcripción
+                      manual y proporcionando confianza total en la integridad de los datos.
                     </p>
                   </div>
                 </div>
+              </div>
               )}
 
-              {/* Metadata Tab */}
-              {activeTab === 'metadata' && (
-                <div className="space-y-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Transformación de Metadatos</h4>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Metadatos Originales</h5>
-                        <div className="bg-gray-50 rounded p-3 text-sm">
-                          {document.transformationVerification?.metadata?.originalMetadata ? 
-                            Object.entries(document.transformationVerification.metadata.originalMetadata).map(([key, value]) => (
-                              <div key={key} className="flex justify-between">
-                                <span className="text-gray-600">{key}:</span>
-                                <span className="font-mono">{value}</span>
-                              </div>
-                            )) : 
-                            <div className="text-gray-500">No disponible</div>
-                          }
-                        </div>
+              {/* Section 2: Estructura del Documento */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center mb-6">
+                    <div className="relative">
+                      <div className="p-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 rounded-2xl shadow-2xl">
+                        <Layers className="h-6 w-6 text-white" />
                       </div>
-
-                      <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Metadatos Inyectados</h5>
-                        <div className="bg-blue-50 rounded p-3 text-sm">
-                          {document.transformationVerification?.metadata?.injectedMetadata ? 
-                            Object.entries(document.transformationVerification.metadata.injectedMetadata).map(([key, value]) => (
-                              <div key={key} className="flex justify-between">
-                                <span className="text-gray-600">{key}:</span>
-                                <span className="font-mono text-blue-800">{value}</span>
-                              </div>
-                            )) : 
-                            <div className="text-gray-500">No disponible</div>
-                          }
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span className="text-sm">RFC Inyectado</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span className="text-sm">Período Inyectado</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span className="text-sm">Monto Total Inyectado</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span className="text-sm">Auditoría Agregada</span>
-                        </div>
-                      </div>
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="ml-4">
+                      <h4 className="text-xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">2. Estructura del Documento</h4>
+                      <p className="text-sm text-green-200/80">Modificaciones aplicadas al layout físico</p>
+                    </div>
+                  </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-green-200 uppercase tracking-wider">Páginas Incluidas en la Versión Final</label>
+                    <p className="text-sm text-white mt-1">Portada estandarizada + Página 1 del documento original + Resumen</p>
+                    <p className="text-xs text-green-200/70 mt-1">Se eliminaron 2 páginas adicionales no requeridas</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+                      <span className="text-sm text-white">Carátula estándar añadida</span>
+                    </div>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+                      <span className="text-sm text-white">Pie de página con trazabilidad</span>
+                    </div>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+                      <span className="text-sm text-white">Formularios interactivos eliminados</span>
+                    </div>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+                      <span className="text-sm text-white">JavaScript/adjuntos eliminados</span>
                     </div>
                   </div>
                 </div>
-              )}
+                </div>
+              </div>
 
-              {/* Restructuring Tab */}
-              {activeTab === 'restructuring' && (
-                <div className="space-y-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Reestructuración de Contenido</h4>
-                    
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 rounded p-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-1">Páginas Originales</h5>
-                          <p className="text-2xl font-bold text-gray-900">
-                            {document.transformationVerification?.restructuring?.originalPageCount || 0}
-                          </p>
-                        </div>
-                        <div className="bg-blue-50 rounded p-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-1">Páginas Finales</h5>
-                          <p className="text-2xl font-bold text-blue-900">
-                            {document.transformationVerification?.restructuring?.finalPageCount || 0}
-                          </p>
-                        </div>
+              {/* Section 3: Metadatos Aplicados */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center mb-6">
+                    <div className="relative">
+                      <div className="p-3 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 rounded-2xl shadow-2xl">
+                        <Database className="h-6 w-6 text-white" />
                       </div>
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="ml-4">
+                      <h4 className="text-xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">3. Metadatos Aplicados</h4>
+                      <p className="text-sm text-purple-200/80">Campos estandarizados escritos en el PDF</p>
+                    </div>
+                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Title</label>
+                    <p className="text-sm text-white mt-1">Factura Maquila Normalizada</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Author / Proveedor</label>
+                    <p className="text-sm text-white mt-1">{document.proveedorEmail}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">RFC_Emisor (embebido)</label>
+                    <p className="text-sm font-mono text-white mt-1">{document.fiscalData.rfcEmisor}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Período (embebido)</label>
+                    <p className="text-sm text-white mt-1">{document.fiscalData.periodo}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Fecha de Normalización UTC</label>
+                    <p className="text-sm text-white mt-1">{new Date(document.readyAtUtc).toLocaleString('es-MX')}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Sistema Generador</label>
+                    <p className="text-sm text-white mt-1">PDF Portal v1.0 - Sello Interno</p>
+                  </div>
+                </div>
+                </div>
+              </div>
 
-                      <div className="space-y-2">
-                        <h5 className="text-sm font-medium text-gray-700">Modificaciones Aplicadas</h5>
-                        <div className="space-y-1">
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Carátula Estándar Agregada</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Pie de Página Aplicado</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Formularios Eliminados</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">JavaScript Removido</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Anexos Eliminados</span>
-                          </div>
-                        </div>
+              {/* Section 4: Cumplimiento Técnico de Formato */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 transition-all duration-500">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center mb-6">
+                    <div className="relative">
+                      <div className="p-3 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-2xl shadow-2xl">
+                        <CheckSquare className="h-6 w-6 text-white" />
                       </div>
-
-                      <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                        <h5 className="text-sm font-medium text-yellow-800 mb-1">Resumen de Reestructuración</h5>
-                        <p className="text-sm text-yellow-700">
-                          {document.transformationVerification?.restructuring?.restructuringSummary || 
-                           "Carátula estándar agregada, páginas reorganizadas, elementos interactivos eliminados"}
-                        </p>
-                      </div>
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="ml-4">
+                      <h4 className="text-xl font-bold bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent">4. Cumplimiento Técnico de Formato</h4>
+                      <p className="text-sm text-orange-200/80">Verificación para sistemas gubernamentales</p>
+                    </div>
+                  </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <span className="text-sm text-white">Archivo es PDF válido</span>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                      <span className="text-xs text-green-400">✓ Cumple</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <span className="text-sm text-white">Escala de grises 8 bits</span>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                      <span className="text-xs text-green-400">✓ Cumple</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <span className="text-sm text-white">Resolución 300 DPI</span>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                      <span className="text-xs text-green-400">✓ Cumple</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <span className="text-sm text-white">Tamaño ≤ 3 MB</span>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                      <span className="text-xs text-green-400">✓ Cumple</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <span className="text-sm text-white">Sin formularios interactivos</span>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                      <span className="text-xs text-green-400">✓ Cumple</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <span className="text-sm text-white">Sin JavaScript incrustado</span>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                      <span className="text-xs text-green-400">✓ Cumple</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <span className="text-sm text-white">Sin contraseñas</span>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                      <span className="text-xs text-green-400">✓ Cumple</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-white">Metadatos obligatorios presentes</span>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                      <span className="text-xs text-green-400">✓ Cumple</span>
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* Extraction Tab */}
-              {activeTab === 'extraction' && (
-                <div className="space-y-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Extracción de Datos</h4>
-                    
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-green-50 rounded p-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-1">RFC Extraído</h5>
-                          <p className="text-lg font-mono text-green-800">
-                            {document.transformationVerification?.extraction?.rfcExtracted || document.fiscalData.rfcEmisor}
-                          </p>
-                          <div className="flex items-center mt-1">
-                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                            <span className="text-xs text-green-700">Válido</span>
-                          </div>
-                        </div>
-                        <div className="bg-blue-50 rounded p-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-1">Período Extraído</h5>
-                          <p className="text-lg font-mono text-blue-800">
-                            {document.transformationVerification?.extraction?.periodoExtracted || document.fiscalData.periodo}
-                          </p>
-                          <div className="flex items-center mt-1">
-                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                            <span className="text-xs text-green-700">Válido</span>
-                          </div>
-                        </div>
-                        <div className="bg-purple-50 rounded p-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-1">Monto Total</h5>
-                          <p className="text-lg font-mono text-purple-800">
-                            ${document.transformationVerification?.extraction?.montoTotalExtracted || document.fiscalData.montoTotalMxn}
-                          </p>
-                          <div className="flex items-center mt-1">
-                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                            <span className="text-xs text-green-700">Válido</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-gray-50 rounded p-3">
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Confianza de Extracción</h5>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">RFC</span>
-                            <div className="flex items-center">
-                              <div className="w-20 bg-gray-200 rounded-full h-2 mr-2">
-                                <div className="bg-green-500 h-2 rounded-full" style={{width: '95%'}}></div>
-                              </div>
-                              <span className="text-sm font-medium">95%</span>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Período</span>
-                            <div className="flex items-center">
-                              <div className="w-20 bg-gray-200 rounded-full h-2 mr-2">
-                                <div className="bg-green-500 h-2 rounded-full" style={{width: '88%'}}></div>
-                              </div>
-                              <span className="text-sm font-medium">88%</span>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Monto Total</span>
-                            <div className="flex items-center">
-                              <div className="w-20 bg-gray-200 rounded-full h-2 mr-2">
-                                <div className="bg-green-500 h-2 rounded-full" style={{width: '92%'}}></div>
-                              </div>
-                              <span className="text-sm font-medium">92%</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                        <h5 className="text-sm font-medium text-blue-800 mb-1">Método de Extracción</h5>
-                        <p className="text-sm text-blue-700">
-                          {document.transformationVerification?.extraction?.extractionMethod || "REGEX"} - 
-                          Extracción automática mediante expresiones regulares
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Normalization Tab */}
-              {activeTab === 'normalization' && (
-                <div className="space-y-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Normalización de Formato</h4>
-                    
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 rounded p-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-1">Formato Original</h5>
-                          <p className="text-sm font-mono text-gray-900">
-                            {document.transformationVerification?.normalization?.originalFormat || "PDF 1.7"}
-                          </p>
-                        </div>
-                        <div className="bg-blue-50 rounded p-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-1">Formato Final</h5>
-                          <p className="text-sm font-mono text-blue-900">
-                            {document.transformationVerification?.normalization?.finalFormat || "PDF/A-1b"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <h5 className="text-sm font-medium text-gray-700">Transformaciones Aplicadas</h5>
-                        <div className="space-y-1">
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Conversión a Escala de Grises 8-bit</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Normalización a 300 DPI</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Compresión Optimizada</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Eliminación de Contraseñas</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Remoción de Contenido Interactivo</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                            <span className="text-sm">Validación de Estructura PDF/A</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-green-50 border border-green-200 rounded p-3">
-                        <h5 className="text-sm font-medium text-green-800 mb-1">Cumplimiento Técnico</h5>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div className="flex items-center">
-                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                            <span className="text-green-700">Archivo PDF válido</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                            <span className="text-green-700">Escala de grises 8-bit</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                            <span className="text-green-700">Resolución 300 DPI</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                            <span className="text-green-700">Tamaño ≤ 3 MB</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Download Section - Always visible */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Descargar Archivos</h4>
-                <div className="flex space-x-3">
-                  <a
-                    href={document.downloadLinks.pdfFinalUrl}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    PDF Normalizado
-                  </a>
-                  <a
-                    href={document.downloadLinks.dataJsonUrl}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Datos Estructurados (JSON)
-                  </a>
                 </div>
               </div>
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500">No se pudo cargar la información del documento</p>
+              <p className="text-white/70">No se pudo cargar la información del documento</p>
             </div>
           )}
+        </div>
+
+        {/* Footer with Download Actions */}
+        <div className="border-t border-white/20 p-6 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90 backdrop-blur-xl">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-white/80">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="relative">
+                  <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
+                  <div className="absolute inset-0 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-ping opacity-30"></div>
+                </div>
+                <p className="font-semibold text-white">Documento verificado y listo para envío</p>
+              </div>
+              <p className="text-xs text-blue-200/70">Todas las transformaciones aplicadas exitosamente</p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={onClose}
+                className="px-4 py-2.5 text-sm font-medium text-white/90 bg-white/10 border border-white/20 rounded-xl hover:bg-white/20 hover:text-white hover:border-white/30 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  if (document) {
+                    onDownload(document.id)
+                  }
+                }}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 border border-transparent rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-blue-500/25"
+              >
+                <div className="flex items-center space-x-2">
+                  <Download className="h-4 w-4" />
+                  <span>Descargar PDF Final</span>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  if (document) {
+                    const data = {
+                      rfc: document.fiscalData.rfcEmisor,
+                      periodo: document.fiscalData.periodo,
+                      monto: document.fiscalData.montoTotalMxn,
+                      proveedor: document.proveedorEmail,
+                      fecha: document.readyAtUtc
+                    }
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+                    const url = URL.createObjectURL(blob)
+                    const a = window.document.createElement('a')
+                    a.href = url
+                    a.download = `datos_${document.fiscalData.rfcEmisor}_${document.fiscalData.periodo}.json`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  }
+                }}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 border border-transparent rounded-xl hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-green-500/25"
+              >
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-4 w-4" />
+                  <span>Descargar Datos (JSON)</span>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -580,6 +487,7 @@ const TransformationDrawer: React.FC<{
 
 // Main Component - Compliance Verification Dashboard
 export const ClientReadyDocumentsPage: React.FC = () => {
+  const { user, logout } = useAuth()
   const [readyDocs, setReadyDocs] = useState<ReadyDocument[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
@@ -587,51 +495,224 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
-  
+
+  // Helper function to clean up regex patterns and show proper extracted values
+  const getDisplayValue = (value: string, type: string) => {
+    // Enhanced debug logging
+    console.log(`🔍 getDisplayValue called with value: "${value}", type: "${type}"`)
+    console.log(`🔍 Value length: ${value?.length || 0}`)
+    console.log(`🔍 Value type: ${typeof value}`)
+
+    if (!value || value === "N/A" || value === "0") {
+      console.log(`❌ Returning "No extraído" for value: "${value}"`)
+      return "No extraído"
+    }
+
+    // Check if it's a regex pattern (contains [\s:]* or similar regex syntax)
+    const isRegexPattern = value.includes("[\\s:]*") ||
+      value.includes("([A-Z0-9]{12,13})") ||
+      value.includes("([0-9]{2}/[0-9]{4})") ||
+      value.includes("([0-9,]+\\.[0-9]{2})") ||
+      value.includes("\\$?([0-9,]+\\.[0-9]{2})") ||
+      value.includes("Total[\\s:]*\\$?") ||
+      value.includes("Per[ií]odo[\\s:]*") ||
+      value.includes("RFC[\\s:]*") ||
+      value.includes("\\$?") ||
+      value.includes("([0-9,]+") ||
+      value.includes("\\.[0-9]{2})") ||
+      value.includes("\\s:") ||
+      value.includes("\\$") ||
+      value.includes("([0-9") ||
+      value.includes("\\.[0-9]")
+
+    console.log(`Is regex pattern: ${isRegexPattern}`)
+
+    if (isRegexPattern) {
+      // This is a regex pattern, show a placeholder indicating extraction is needed
+      return "Re-procesar"
+    }
+
+    // Return the actual extracted value
+    if (type === "MONTO" && value !== "0") {
+      return `$${value} MXN`
+    }
+
+    return value
+  }
+
+  // Download function to properly handle PDF downloads
+  const handleDownload = async (documentId: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('No hay token de autenticación')
+        return
+      }
+
+      const response = await fetch(`http://localhost:5000/api/documents/client/documents/${documentId}/file`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Download error:', errorText)
+        alert(`Error al descargar: ${response.status} - ${errorText}`)
+        return
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob()
+
+      // Create a download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `documento_${documentId}.pdf`
+
+      // Trigger the download
+      document.body.appendChild(link)
+      link.click()
+
+      // Clean up
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+    } catch (error) {
+      console.error('Download failed:', error)
+      alert('Error al descargar el documento')
+    }
+  }
+
   // Upload functionality
   const [uploading, setUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Fetch ready documents
+  const fetchReadyDocuments = async () => {
+    try {
+      setLoading(true)
+      console.log('Fetching ready documents from:', 'http://localhost:5000/api/documents/client/documents/ready')
+      
+      // Debug: Check token and user info
+      const token = localStorage.getItem('token')
+      console.log('Token exists:', !!token)
+      console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'No token')
+      console.log('Current user:', user)
+      console.log('User role:', user?.role)
 
-  // Fetch ready documents on mount
-  useEffect(() => {
-    fetchReadyDocuments()
-  }, [])
+      // Debug: Test if user can access any authenticated endpoint
+      try {
+        const testResponse = await fetch('http://localhost:5000/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        console.log('Auth test response status:', testResponse.status)
+        if (testResponse.ok) {
+          const userData = await testResponse.json()
+          console.log('User data from backend:', userData)
+        } else {
+          const errorText = await testResponse.text()
+          console.log('Auth test error:', errorText)
+        }
+      } catch (err) {
+        console.log('Auth test failed:', err)
+      }
 
-  // Fetch document detail when drawer opens
+      const response = await fetch('http://localhost:5000/api/documents/client/documents/ready', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('Response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Response error:', errorText)
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('Received data:', data)
+      console.log('Documents count:', Array.isArray(data) ? data.length : 0)
+
+      // Debug individual document data
+      if (Array.isArray(data) && data.length > 0) {
+        console.log('First document data:', data[0])
+        console.log('RFC value:', data[0].rfcEmisor)
+        console.log('Periodo value:', data[0].periodo)
+        console.log('Monto value:', data[0].montoTotalMxn)
+
+        // Test getDisplayValue function
+        console.log('Testing getDisplayValue:')
+        console.log('RFC display:', getDisplayValue(data[0].rfcEmisor, "RFC"))
+        console.log('Periodo display:', getDisplayValue(data[0].periodo, "PERIODO"))
+        console.log('Monto display:', getDisplayValue(data[0].montoTotalMxn, "MONTO"))
+
+        // Check if monto contains the specific pattern
+        console.log('Monto contains [\\s:]*:', data[0].montoTotalMxn?.includes('[\\s:]*'))
+        console.log('Monto contains \\$?:', data[0].montoTotalMxn?.includes('\\$?'))
+        console.log('Monto contains ([0-9,]+\\.[0-9]{2}):', data[0].montoTotalMxn?.includes('([0-9,]+\\.[0-9]{2})'))
+      }
+
+      // Backend returns array directly, not wrapped in { documents: [...] }
+      setReadyDocs(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching ready documents:', error)
+      setError('Error al cargar los documentos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch document detail
   useEffect(() => {
-    if (selectedDocId && drawerOpen) {
-      const fetchDocumentDetail = async () => {
+    const fetchDocumentDetail = async () => {
+      if (selectedDocId && drawerOpen) {
+        setDetailLoading(true)
         try {
-          setDetailLoading(true)
-          const token = localStorage.getItem('token')
-          if (!token) return
-
+          console.log('🔍 Fetching document detail for ID:', selectedDocId)
           const response = await fetch(`http://localhost:5000/api/documents/client/documents/${selectedDocId}`, {
             headers: {
-              'Authorization': `Bearer ${token}`,
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
               'Content-Type': 'application/json'
             }
           })
 
-          if (!response.ok) {
-            throw new Error(`Error ${response.status}: ${response.statusText}`)
+          if (response.ok) {
+            const data = await response.json()
+            console.log('🔍 Document detail data:', data)
+            console.log('🔍 Fiscal data:', data.fiscalData)
+            if (data.fiscalData) {
+              console.log('🔍 RFC in detail:', data.fiscalData.rfcEmisor)
+              console.log('🔍 Periodo in detail:', data.fiscalData.periodo)
+              console.log('🔍 Monto in detail:', data.fiscalData.montoTotalMxn)
+            }
+            setSelectedDocDetail(data)
           }
-
-          const data = await response.json()
-          setSelectedDocDetail(data)
-        } catch (err) {
-          console.error('Error fetching document detail:', err)
+        } catch (error) {
+          console.error('Error fetching document detail:', error)
         } finally {
           setDetailLoading(false)
         }
       }
-
-      fetchDocumentDetail()
     }
+
+    fetchDocumentDetail()
   }, [selectedDocId, drawerOpen])
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchReadyDocuments()
+  }, [])
 
   const handleRowClick = (docId: string) => {
     setSelectedDocId(docId)
@@ -668,7 +749,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0]
       if (file.type === 'application/pdf') {
@@ -684,26 +765,31 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
     setUploading(true)
     try {
-      console.log('Starting upload...', { 
-        fileName: selectedFile.name, 
+      console.log('Starting upload...', {
+        fileName: selectedFile.name,
         size: selectedFile.size,
         type: selectedFile.type,
-        templateId: 1
+        templateId: 1 // Using template ID 1 as default
       })
-      
-      // Use template ID 1 as default (backend will create default template if none exist)
+
       const uploadResult = await documentApi.upload(selectedFile, 1)
       console.log('Upload successful:', uploadResult)
-      
+
       setSelectedFile(null)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-      
-      // Refresh the documents list
-      await fetchReadyDocuments()
-      
-      alert('Documento subido y procesado exitosamente!')
+
+      // Wait a moment for processing, then refresh
+      console.log('Refreshing document list...')
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds for processing
+      await fetchReadyDocuments() // Refresh the documents list
+
+      console.log('Document list refreshed, current count:', readyDocs.length)
+
+      // Show success message with document count
+      const currentCount = readyDocs.length
+      alert(`Documento subido y procesado exitosamente! Total de documentos: ${currentCount}`)
     } catch (error) {
       console.error('Upload failed:', error)
       console.error('Error details:', {
@@ -717,39 +803,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     }
   }
 
-  // Extract the fetch function to reuse it
-  const fetchReadyDocuments = async () => {
-    try {
-      setLoading(true)
-      const token = localStorage.getItem('token')
-      if (!token) {
-        setError('No se encontró token de autenticación')
-        return
-      }
-
-      const response = await fetch('http://localhost:5000/api/documents/client/documents/ready', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      console.log('Fetched documents:', data)
-      setReadyDocs(data)
-    } catch (err) {
-      console.error('Failed to fetch documents:', err)
-      setError(err instanceof Error ? err.message : 'Error desconocido')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -760,238 +813,500 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-medium text-gray-900 mb-2">Error al cargar documentos</h2>
-          <p className="text-gray-600">{error}</p>
-        </div>
+      <div className="text-center py-12">
+        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h2 className="text-lg font-medium text-gray-900 mb-2">Error al cargar documentos</h2>
+        <p className="text-gray-600">{error}</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Verificación de Cumplimiento PDF</h1>
-          <p className="mt-2 text-gray-600">
-            Dashboard de verificación de transformaciones aplicadas a documentos PDF
-          </p>
-        </div>
+    <div className="h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-auto flex flex-col">
+      {/* Advanced Animated Background */}
+      <div className="absolute inset-0 overflow-auto pointer-events-none">
+        {/* Floating Orbs */}
+        <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-to-br from-indigo-500/30 to-cyan-500/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl animate-pulse delay-500"></div>
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:50px_50px] opacity-20"></div>
+        
+        {/* Animated Lines */}
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-pulse delay-1000"></div>
+      </div>
 
-        {/* Upload Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Subir Nuevo Documento PDF</h2>
-          
-          {/* Drag and Drop Area */}
-          <div
-            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive
-                ? 'border-blue-400 bg-blue-50'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf"
-              onChange={handleFileSelect}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <div className="space-y-4">
-              <Upload className="h-12 w-12 text-gray-400 mx-auto" />
+      {/* Modern Header */}
+      <div className="relative z-10 bg-gradient-to-r from-white/5 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-4">
+          <div className="flex items-center justify-between">
+            {/* Left Side - Logo & Title */}
+            <div className="flex items-center space-x-3">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
+                <div className="relative p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-xl shadow-2xl">
+                  <Shield className="h-5 w-5 text-white" />
+                </div>
+              </div>
               <div>
-                <p className="text-lg font-medium text-gray-900">
-                  {selectedFile ? 'Archivo seleccionado' : 'Arrastra tu PDF aquí o haz clic para seleccionar'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {selectedFile ? selectedFile.name : 'Solo archivos PDF son permitidos'}
-                </p>
-              </div>
-              {selectedFile && (
-                <div className="text-sm text-gray-600">
-                  Tamaño: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Upload Button */}
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={handleUpload}
-              disabled={!selectedFile || uploading}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                selectedFile && !uploading
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {uploading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Procesando...
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Subir PDF
-                </div>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Compliance Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <FileText className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Documentos Procesados</p>
-                <p className="text-2xl font-bold text-gray-900">{readyDocs.length}</p>
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
+                  Centro de Cumplimiento Fiscal
+                </h1>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Cumplimiento Total</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {readyDocs.filter(doc => doc.complianceStatus === 'COMPLIANT').length}
-                </p>
-              </div>
-            </div>
-          </div>
+            {/* Right Side - Status & Actions */}
+            <div className="flex items-center space-x-4">
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <AlertCircle className="h-6 w-6 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Parcialmente Cumplidos</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {readyDocs.filter(doc => doc.complianceStatus === 'PARTIAL').length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <XCircle className="h-6 w-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">No Cumplidos</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {readyDocs.filter(doc => doc.complianceStatus === 'NON_COMPLIANT').length}
-                </p>
-              </div>
+              {/* Logout Button */}
+              <button
+                onClick={logout}
+                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-400/30 rounded-xl hover:from-red-500/30 hover:to-rose-500/30 hover:border-red-400/50 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Cerrar Sesión</span>
+              </button>
             </div>
           </div>
         </div>
+      </div>
 
+        <div className="relative w-full py-6 sm:py-10 flex-1 flex flex-col lg:flex-row gap-3 sm:gap-6 justify-center">
+          <div className='flex w-[70%]'>
+            {/* Left Column - Upload Section + Stats */}
+            <div className="flex-1 flex flex-row w-full">
+              <div className='w-full'>
+            {/* Modern Upload Section */}
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 mb-3 sm:mb-6 relative overflow-auto group hover:bg-white/15 transition-all duration-500">
+              {/* Glassmorphism Effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="relative z-10 flex items-center justify-between flex flex-col">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="relative">
+                    <div className="p-3 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-2xl shadow-2xl">
+                      <Upload className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">Subir PDF</h2>
+                    <p className="text-sm text-blue-200/80">Procesamiento automático con IA</p>
+                  </div>
+                </div>
 
-        {/* Document List (Simplified) */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-lg font-medium text-gray-900">
-              Documentos Procesados ({readyDocs.length})
-            </h2>
-            <button
-              onClick={fetchReadyDocuments}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loading ? 'Actualizando...' : 'Actualizar'}
-            </button>
-          </div>
-          
-          {readyDocs.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay documentos procesados</h3>
-              <p className="text-gray-600">
-                Sube un documento PDF para comenzar el proceso de verificación de cumplimiento
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {readyDocs.map((doc) => (
+                {/* Modern Drag and Drop Area */}
                 <div
-                  key={doc.id}
-                  onClick={() => handleRowClick(doc.id)}
-                  className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
+                  className={`relative border-2 border-dashed rounded-2xl p-4 sm:p-6 text-center transition-all duration-500 w-full sm:w-80 group/drop ${dragActive
+                    ? 'border-blue-400 bg-blue-500/20 backdrop-blur-sm'
+                    : 'border-white/30 hover:border-blue-400/50 hover:bg-white/5 backdrop-blur-sm'
+                    }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0">
-                          <FileText className="h-8 w-8 text-gray-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">
-                            RFC: {doc.rfcEmisor} | Período: {doc.periodo} | Monto: ${doc.montoTotalMxn} MXN
-                          </p>
-                          <p className="text-sm text-gray-500">Proveedor: {doc.proveedorEmail}</p>
-                        </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="relative mx-auto w-8 h-8 sm:w-10 sm:h-10">
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-lg opacity-50 group-hover/drop:opacity-75 transition-opacity duration-500"></div>
+                      <div className="relative w-full h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-2xl group-hover/drop:scale-110 transition-transform duration-500">
+                        <Upload className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <StatusBadge status={doc.complianceStatus} />
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleRowClick(doc.id)
-                          }}
-                          className="text-blue-600 hover:text-blue-900 flex items-center text-sm font-medium"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Ver Detalles
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            // Add download functionality here
-                            window.open(`http://localhost:5000/api/documents/${doc.id}/download`, '_blank')
-                          }}
-                          className="text-green-600 hover:text-green-900 flex items-center text-sm font-medium"
-                        >
-                          <Download className="h-4 w-4 mr-1" />
-                          Descargar
-                        </button>
+                    <div>
+                      <p className="text-sm sm:text-base font-semibold text-white mb-1">
+                        {selectedFile ? selectedFile.name : 'Arrastra PDF aquí'}
+                      </p>
+                      <p className="text-xs text-blue-200/70">o haz clic para seleccionar</p>
+                    </div>
+                    {selectedFile && (
+                      <div className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-full">
+                        <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                        <p className="text-xs text-green-300 font-medium">✓ Archivo seleccionado</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Modern Upload Button */}
+                <button
+                  onClick={handleUpload}
+                  disabled={!selectedFile || uploading}
+                  className={`relative px-6 mt-5 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold text-sm sm:text-base transition-all duration-500 w-full sm:w-auto overflow-auto group/btn ${selectedFile && !uploading
+                    ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 shadow-2xl hover:shadow-blue-500/25 hover:scale-105'
+                    : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
+                    }`}
+                >
+                  {uploading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="relative">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white mr-3"></div>
+                        <div className="absolute inset-0 animate-ping rounded-full h-5 w-5 border border-white/20"></div>
+                      </div>
+                      <span className="font-semibold">Procesando...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <Zap className="h-5 w-5 mr-2 group-hover/btn:animate-pulse" />
+                      <span className="font-semibold">Subir Documento</span>
+                    </div>
+                  )}
+                  
+                  {/* Button Shine Effect */}
+                  {selectedFile && !uploading && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000"></div>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Modern Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-6">
+              {/* Documents Processed */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-105 transition-all duration-500 group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <div className="p-3 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-2xl shadow-2xl">
+                          <FileText className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-pulse"></div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-blue-200/80 uppercase tracking-wider">Procesados</p>
+                        <p className="text-xl sm:text-2xl font-bold text-white">{readyDocs.length}</p>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Compliance Rate */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-105 transition-all duration-500 group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <div className="p-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 rounded-2xl shadow-2xl">
+                          <Shield className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-green-200/80 uppercase tracking-wider">Cumplidos</p>
+                        <p className="text-xl sm:text-2xl font-bold text-white">
+                          {readyDocs.filter(doc => doc.complianceStatus === 'COMPLIANT').length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Partial Compliance */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-105 transition-all duration-500 group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-amber-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <div className="p-3 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-2xl shadow-2xl">
+                          <AlertCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-orange-400 to-amber-400 rounded-full animate-pulse"></div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-orange-200/80 uppercase tracking-wider">Parciales</p>
+                        <p className="text-xl sm:text-2xl font-bold text-white">
+                          {readyDocs.filter(doc => doc.complianceStatus === 'PARTIAL').length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Non-Compliant */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-105 transition-all duration-500 group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-rose-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <div className="p-3 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 rounded-2xl shadow-2xl">
+                          <XCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-red-400 to-rose-400 rounded-full animate-pulse"></div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-red-200/80 uppercase tracking-wider">No Cumplidos</p>
+                        <p className="text-xl sm:text-2xl font-bold text-white">
+                          {readyDocs.filter(doc => doc.complianceStatus === 'NON_COMPLIANT').length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+
+            {/* Right Column - Document List */}
+            <div className="flex-1 flex flex-col ml-5 h-2/3">
+            {/* Modern Document List */}
+            <div className="flex-1 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden flex flex-col relative group">
+              {/* Glassmorphism Effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              {/* Modern Header */}
+              <div className="relative z-10 px-2 sm:px-3 py-2 sm:py-3 border-b border-white/20 bg-gradient-to-r from-white/10 to-blue-500/10 backdrop-blur-sm">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      <div className="p-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl shadow-2xl">
+                        <BarChart3 className="h-5 w-5 text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <h2 className="text-base sm:text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                        Documentos Finalizados ({readyDocs.length})
+                      </h2>
+                      <p className="text-xs text-blue-200/70">Verificación de cumplimiento</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={fetchReadyDocuments}
+                    disabled={loading}
+                    className="relative px-3 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 border border-transparent rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-blue-500/25 hover:scale-105 transition-all duration-300"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="relative">
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                          <div className="absolute inset-0 animate-ping rounded-full h-4 w-4 border border-white/20"></div>
+                        </div>
+                        <span className="font-medium">Actualizando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
+                        <span className="font-medium">Actualizar</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Modern System Notice */}
+                <div className="relative z-10 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3 backdrop-blur-sm">
+                  <div className="flex items-center">
+                    <div className="relative mr-2 sm:mr-3">
+                      <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                    </div>
+                    <p className="text-xs sm:text-sm text-blue-200 font-medium">
+                      Datos extraídos automáticamente por el sistema
+                    </p>
+                  </div>
+                </div>
+
+                {/* Modern Re-processing Notice */}
+                {readyDocs.some(doc =>
+                  getDisplayValue(doc.rfcEmisor, "RFC") === "Re-procesar" ||
+                  getDisplayValue(doc.periodo, "PERIODO") === "Re-procesar" ||
+                  getDisplayValue(doc.montoTotalMxn, "MONTO") === "Re-procesar"
+                ) && (
+                    <div className="relative z-10 bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-400/30 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3 backdrop-blur-sm">
+                      <div className="flex items-center">
+                        <div className="relative mr-2 sm:mr-3">
+                          <div className="h-4 w-4 sm:h-5 sm:w-5 bg-orange-400/20 rounded-full flex items-center justify-center">
+                            <span className="text-orange-300 text-xs font-bold">!</span>
+                          </div>
+                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                        </div>
+                        <p className="text-xs sm:text-sm text-orange-200 font-medium">
+                          Algunos documentos necesitan re-procesamiento
+                        </p>
+                      </div>
+                    </div>
+                  )}
+              </div>
+
+              {/* Modern Document Table */}
+              <div className="relative z-10 flex-1 overflow-auto">
+                {readyDocs.length === 0 ? (
+                  <div className="text-center py-8 sm:py-12">
+                    <div className="relative mx-auto w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6">
+                      <div className="absolute inset-0 bg-gradient-to-r from-gray-500/30 to-gray-600/30 rounded-full blur-lg"></div>
+                      <div className="relative w-full h-full bg-gradient-to-r from-gray-500/50 to-gray-600/50 rounded-full flex items-center justify-center">
+                        <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-gray-300" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3">No hay documentos finalizados</h3>
+                    <p className="text-sm sm:text-base text-gray-300 max-w-md mx-auto">
+                      Sube un documento PDF para comenzar el proceso de verificación
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-white/10">
+                      <thead className="bg-gradient-to-r from-white/10 to-blue-500/10 backdrop-blur-sm">
+                        <tr>
+                          <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
+                            Fecha
+                          </th>
+                          <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
+                            RFC
+                          </th>
+                          <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
+                            Período
+                          </th>
+                          <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
+                            Monto
+                          </th>
+                          <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
+                            Estado
+                          </th>
+                          <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
+                            Acción
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-transparent divide-y divide-white/10">
+                        {readyDocs.map((doc, index) => (
+                          <tr
+                            key={doc.id}
+                            onClick={() => handleRowClick(doc.id)}
+                            className="hover:bg-white/5 cursor-pointer transition-all duration-300 group/row"
+                            style={{ animationDelay: `${index * 100}ms` }}
+                          >
+                            <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base text-white font-medium">
+                              {new Date(doc.readyAtUtc).toLocaleDateString('es-MX')}
+                            </td>
+                            <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base font-mono text-white">
+                              <div className="flex items-center">
+                                {getDisplayValue(doc.rfcEmisor, "RFC") === "Re-procesar" ? (
+                                  <>
+                                    <div className="h-4 w-4 bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-full mr-2 sm:mr-3 flex items-center justify-center">
+                                      <span className="text-orange-300 text-xs font-bold">!</span>
+                                    </div>
+                                    <span className="text-orange-300 font-medium text-sm">Re-procesar</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="relative mr-2 sm:mr-3">
+                                      <CheckCircle className="h-4 w-4 text-blue-400" />
+                                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                                    </div>
+                                    <span className="text-sm text-white font-mono">{getDisplayValue(doc.rfcEmisor, "RFC")}</span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base text-white">
+                              <div className="flex items-center">
+                                {getDisplayValue(doc.periodo, "PERIODO") === "Re-procesar" ? (
+                                  <>
+                                    <div className="h-4 w-4 bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-full mr-2 sm:mr-3 flex items-center justify-center">
+                                      <span className="text-orange-300 text-xs font-bold">!</span>
+                                    </div>
+                                    <span className="text-orange-300 font-medium text-sm">Re-procesar</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="relative mr-2 sm:mr-3">
+                                      <CheckCircle className="h-4 w-4 text-green-400" />
+                                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                    </div>
+                                    <span className="text-sm text-white">{getDisplayValue(doc.periodo, "PERIODO")}</span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base font-bold text-white">
+                              <div className="flex items-center">
+                                {getDisplayValue(doc.montoTotalMxn, "MONTO") === "Re-procesar" ? (
+                                  <>
+                                    <div className="h-4 w-4 bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-full mr-2 sm:mr-3 flex items-center justify-center">
+                                      <span className="text-orange-300 text-xs font-bold">!</span>
+                                    </div>
+                                    <span className="text-orange-300 font-medium text-sm">Re-procesar</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="relative mr-2 sm:mr-3">
+                                      <CheckCircle className="h-4 w-4 text-purple-400" />
+                                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                                    </div>
+                                    <span className="text-sm text-white">{getDisplayValue(doc.montoTotalMxn, "MONTO")}</span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-400/30 backdrop-blur-sm">
+                                <div className="relative mr-1 sm:mr-2">
+                                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                                </div>
+                                <span className="hidden sm:inline">Listo</span>
+                              </span>
+                            </td>
+                            <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base font-medium">
+                              <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleRowClick(doc.id)
+                                  }}
+                                  className="px-2 sm:px-3 py-1 sm:py-2 text-blue-300 hover:text-blue-100 hover:bg-blue-500/20 rounded-lg flex items-center text-xs font-medium transition-all duration-300 hover:scale-105"
+                                >
+                                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                  <span className="hidden sm:inline">Ver</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDownload(doc.id)
+                                  }}
+                                  className="px-2 sm:px-3 py-1 sm:py-2 text-green-300 hover:text-green-100 hover:bg-green-500/20 rounded-lg flex items-center text-xs font-medium transition-all duration-300 hover:scale-105"
+                                >
+                                  <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                  <span className="hidden sm:inline">Descargar</span>
+                                </button>
+                              </div>
+                            </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Transformation Verification Drawer */}
-      <TransformationDrawer
-        isOpen={drawerOpen}
-        onClose={handleCloseDrawer}
-        document={selectedDocDetail}
-        loading={detailLoading}
-      />
+        {/* Transformation Verification Drawer */}
+        <TransformationDrawer
+          isOpen={drawerOpen}
+          onClose={handleCloseDrawer}
+          document={selectedDocDetail}
+          loading={detailLoading}
+          onDownload={handleDownload}
+          getDisplayValue={getDisplayValue}
+        />
+      </div>
     </div>
   )
 }

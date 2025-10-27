@@ -13,3 +13,4 @@ E:\workana\pdfgate\backend\src\PdfPortal.Application\obj\Debug\net8.0\PdfPortal.
 E:\workana\pdfgate\backend\src\PdfPortal.Application\obj\Debug\net8.0\refint\PdfPortal.Application.dll
 E:\workana\pdfgate\backend\src\PdfPortal.Application\obj\Debug\net8.0\PdfPortal.Application.pdb
 E:\workana\pdfgate\backend\src\PdfPortal.Application\obj\Debug\net8.0\ref\PdfPortal.Application.dll
+E:\workana\pdfgate\backend\src\PdfPortal.Application\obj\Debug\net8.0\PdfPortal.Application.sourcelink.json

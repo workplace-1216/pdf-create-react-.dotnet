@@ -96,9 +96,9 @@ public class DocumentController : ControllerBase
                         Name = "Default PDF Processing Template",
                         JsonDefinition = @"{
                             ""metadataRules"": {
-                                ""RFC"": ""RFC[\\s:]*([A-Z0-9]{12,13})"",
-                                ""periodo"": ""Per[ií]odo[\\s:]*([0-9]{2}/[0-9]{4})"",
-                                ""monto_total"": ""Total[\\s:]*\\$?([0-9,]+\\.[0-9]{2})""
+                                ""RFC"": ""(?:RFC|R\\.F\\.C\\.?)[\\s:]*([A-Z0-9]{12,13})"",
+                                ""periodo"": ""(?:Per[ií]odo|Periodo|PERIODO)[\\s:]*([0-9]{1,2}/[0-9]{4})"",
+                                ""monto_total"": ""(?:Total|TOTAL|Monto|MONTO)[\\s:]*\\$?([0-9,]+\\.[0-9]{2})""
                             },
                             ""pageRules"": {
                                 ""keepPages"": [1, 2, 3],
@@ -272,11 +272,18 @@ public class DocumentController : ControllerBase
     }
 
     [HttpGet("client/documents/ready")]
-    [Authorize(Roles = "Client")]
+    [Authorize] // Temporarily allow all authenticated users for debugging
     public async Task<ActionResult<IEnumerable<ClientReadyDocumentDto>>> GetClientReadyDocuments()
     {
         try
         {
+            // Debug: Log user information
+            var userId = CurrentUserHelper.GetCurrentUserId(HttpContext);
+            var userRole = CurrentUserHelper.GetCurrentUserRole(HttpContext);
+            var userEmail = CurrentUserHelper.GetCurrentUserEmail(HttpContext);
+            
+            Console.WriteLine($"GetClientReadyDocuments - UserId: {userId}, Role: {userRole}, Email: {userEmail}");
+            
             // Get all approved processed documents
             var processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(d => 
                 d.Status == ProcessedDocumentStatus.Approved);

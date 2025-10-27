@@ -9,3 +9,4 @@ E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfCompli
 E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\refint\PdfComplianceProcessor.dll
 E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfComplianceProcessor.pdb
 E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\ref\PdfComplianceProcessor.dll
+E:\workana\pdfgate\backend\src\PdfComplianceProcessor\obj\Debug\net8.0\PdfComplianceProcessor.sourcelink.json

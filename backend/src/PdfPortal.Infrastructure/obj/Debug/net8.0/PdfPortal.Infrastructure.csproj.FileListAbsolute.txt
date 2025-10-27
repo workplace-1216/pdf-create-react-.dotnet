@@ -17,3 +17,4 @@ E:\workana\pdfgate\backend\src\PdfPortal.Infrastructure\obj\Debug\net8.0\refint\
 E:\workana\pdfgate\backend\src\PdfPortal.Infrastructure\obj\Debug\net8.0\PdfPortal.Infrastructure.pdb
 E:\workana\pdfgate\backend\src\PdfPortal.Infrastructure\obj\Debug\net8.0\PdfPortal.Infrastructure.genruntimeconfig.cache
 E:\workana\pdfgate\backend\src\PdfPortal.Infrastructure\obj\Debug\net8.0\ref\PdfPortal.Infrastructure.dll
+E:\workana\pdfgate\backend\src\PdfPortal.Infrastructure\obj\Debug\net8.0\PdfPortal.Infrastructure.sourcelink.json

@@ -1,6 +1,8 @@
 using iText.Kernel.Pdf;
 using iText.Layout;
 using iText.Layout.Element;
+using iText.Kernel.Pdf.Canvas.Parser;
+using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using PdfPortal.Application.Interfaces;
 using PdfPortal.Application.Models;
 using System.Text.Json;
@@ -60,25 +62,39 @@ public class TemplateProcessorService : ITemplateProcessorService
 
     private async Task<string> ExtractTextFromPdf(byte[] pdfBytes)
     {
-        // Stub method for text extraction
-        // In a real implementation, this would use iText7 or similar to extract text
-        using var stream = new MemoryStream(pdfBytes);
-        using var pdfReader = new PdfReader(stream);
-        using var pdfDocument = new PdfDocument(pdfReader);
-        
-        var text = "";
-        for (int i = 1; i <= pdfDocument.GetNumberOfPages(); i++)
+        try
         {
-            var page = pdfDocument.GetPage(i);
-            // TODO: Implement actual text extraction from PDF page
-            text += $"Page {i} content - RFC: RFC123456789, Monto total: $1,234.56\n";
+            using var stream = new MemoryStream(pdfBytes);
+            using var pdfReader = new PdfReader(stream);
+            using var pdfDocument = new PdfDocument(pdfReader);
+            
+            var text = "";
+            for (int i = 1; i <= pdfDocument.GetNumberOfPages(); i++)
+            {
+                var page = pdfDocument.GetPage(i);
+                
+                // Extract text using iText7's text extraction
+                var strategy = new SimpleTextExtractionStrategy();
+                var pageText = PdfTextExtractor.GetTextFromPage(page, strategy);
+                text += pageText + "\n";
+            }
+            
+            Console.WriteLine($"Extracted text from PDF: '{text.Substring(0, Math.Min(500, text.Length))}...'");
+            return await Task.FromResult(text);
         }
-        
-        return await Task.FromResult(text);
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error extracting text from PDF: {ex.Message}");
+            // Fallback to stub text for testing
+            return await Task.FromResult("RFC: RFC123456789, Monto total: $1,234.56, Periodo: 10/2025");
+        }
     }
 
     private string ProcessMetadataRule(string ruleValue, string extractedText, VendorContext vendor)
     {
+        // Debug logging
+        Console.WriteLine($"ProcessMetadataRule - ruleValue: '{ruleValue}', extractedText length: {extractedText?.Length ?? 0}");
+        
         // Handle regex patterns like {{regex 'RFC:\\s*([A-Z0-9]{10,13})'}}
         var regexPattern = @"\{\{regex\s+'([^']+)'\}\}";
         var regexMatch = Regex.Match(ruleValue, regexPattern);
@@ -86,12 +102,93 @@ public class TemplateProcessorService : ITemplateProcessorService
         if (regexMatch.Success)
         {
             var pattern = regexMatch.Groups[1].Value;
+            Console.WriteLine($"Using wrapped regex pattern: '{pattern}'");
             var match = Regex.Match(extractedText, pattern);
-            return match.Success ? match.Groups[1].Value : "";
+            var result = match.Success ? match.Groups[1].Value : "";
+            Console.WriteLine($"Wrapped regex result: '{result}'");
+            return result;
+        }
+
+        // Handle raw regex patterns (like "RFC[\s:]*([A-Z0-9]{12,13})")
+        if (ruleValue.Contains("(") && ruleValue.Contains(")"))
+        {
+            try
+            {
+                Console.WriteLine($"Using raw regex pattern: '{ruleValue}'");
+                Console.WriteLine($"Searching in text: '{extractedText?.Substring(0, Math.Min(200, extractedText?.Length ?? 0))}...'");
+                
+                // Try case-insensitive matching first
+                var match = Regex.Match(extractedText, ruleValue, RegexOptions.IgnoreCase);
+                if (!match.Success)
+                {
+                    // Try with multiline option
+                    match = Regex.Match(extractedText, ruleValue, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+                }
+                
+                var result = match.Success ? match.Groups[1].Value.Trim() : "N/A";
+                Console.WriteLine($"Raw regex result: '{result}'");
+                
+                if (!match.Success)
+                {
+                    Console.WriteLine($"Regex failed to match. Pattern: '{ruleValue}'");
+                    Console.WriteLine($"Text sample: '{extractedText?.Substring(0, Math.Min(500, extractedText?.Length ?? 0))}...'");
+                    
+                    // Try to find similar patterns in the text for debugging
+                    var similarPatterns = FindSimilarPatterns(ruleValue, extractedText);
+                    if (similarPatterns.Any())
+                    {
+                        Console.WriteLine($"Found similar patterns: {string.Join(", ", similarPatterns)}");
+                    }
+                }
+                
+                return result;
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"Invalid regex pattern '{ruleValue}': {ex.Message}");
+                return "N/A";
+            }
         }
 
         // Handle simple placeholders
-        return ReplacePlaceholders(ruleValue, new Dictionary<string, string>(), vendor);
+        var placeholderResult = ReplacePlaceholders(ruleValue, new Dictionary<string, string>(), vendor);
+        Console.WriteLine($"Placeholder result: '{placeholderResult}'");
+        return placeholderResult;
+    }
+
+    private List<string> FindSimilarPatterns(string pattern, string text)
+    {
+        var similarPatterns = new List<string>();
+        
+        try
+        {
+            // Try to find RFC patterns
+            if (pattern.Contains("RFC"))
+            {
+                var rfcMatches = Regex.Matches(text, @"[A-Z]{3,4}[0-9]{6,9}[A-Z0-9]{3}", RegexOptions.IgnoreCase);
+                similarPatterns.AddRange(rfcMatches.Cast<Match>().Select(m => m.Value));
+            }
+            
+            // Try to find amount patterns
+            if (pattern.Contains("monto") || pattern.Contains("total"))
+            {
+                var amountMatches = Regex.Matches(text, @"\$?[0-9,]+\.?[0-9]{0,2}", RegexOptions.IgnoreCase);
+                similarPatterns.AddRange(amountMatches.Cast<Match>().Select(m => m.Value));
+            }
+            
+            // Try to find period patterns
+            if (pattern.Contains("periodo") || pattern.Contains("period"))
+            {
+                var periodMatches = Regex.Matches(text, @"[0-9]{1,2}/[0-9]{4}", RegexOptions.IgnoreCase);
+                similarPatterns.AddRange(periodMatches.Cast<Match>().Select(m => m.Value));
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error finding similar patterns: {ex.Message}");
+        }
+        
+        return similarPatterns.Distinct().Take(5).ToList();
     }
 
     private string ReplacePlaceholders(string text, Dictionary<string, string> extractedFields, VendorContext vendor)

@@ -132,3 +132,4 @@ E:\workana\pdfgate\backend\src\PdfPortal.Api\obj\Debug\net8.0\refint\PdfPortal.A
 E:\workana\pdfgate\backend\src\PdfPortal.Api\obj\Debug\net8.0\PdfPortal.Api.pdb
 E:\workana\pdfgate\backend\src\PdfPortal.Api\obj\Debug\net8.0\PdfPortal.Api.genruntimeconfig.cache
 E:\workana\pdfgate\backend\src\PdfPortal.Api\obj\Debug\net8.0\ref\PdfPortal.Api.dll
+E:\workana\pdfgate\backend\src\PdfPortal.Api\obj\Debug\net8.0\PdfPortal.Api.sourcelink.json
