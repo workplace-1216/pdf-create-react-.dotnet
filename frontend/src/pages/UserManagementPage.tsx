@@ -14,8 +14,7 @@ import {
   AlertCircle,
   Download,
   XCircle,
-  ChevronDown,
-  FileText
+  ChevronDown
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
@@ -38,7 +37,6 @@ export const UserManagementPage: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showPdfModal, setShowPdfModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showRoleDropdown, setShowRoleDropdown] = useState(false)
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
@@ -262,18 +260,9 @@ export const UserManagementPage: React.FC = () => {
 
   const handleViewUser = (user: User) => {
     setSelectedUser(user)
-    setShowPdfModal(true)
+    setShowViewModal(true)
   }
 
-  const handleDownloadPdf = (user: User) => {
-    // TODO: Implement actual PDF download functionality
-    console.log('Downloading PDF for user:', user.name)
-    // Create a mock PDF download
-    const link = document.createElement('a')
-    link.href = '#' // Replace with actual PDF URL
-    link.download = `${user.name}_documentos.pdf`
-    link.click()
-  }
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user)
