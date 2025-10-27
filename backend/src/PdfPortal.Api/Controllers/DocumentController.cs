@@ -273,7 +273,9 @@ public class DocumentController : ControllerBase
 
     [HttpGet("client/documents/ready")]
     [Authorize] // Temporarily allow all authenticated users for debugging
-    public async Task<ActionResult<IEnumerable<ClientReadyDocumentDto>>> GetClientReadyDocuments()
+    public async Task<ActionResult<PagedResult<ClientReadyDocumentDto>>> GetClientReadyDocuments(
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 5)
     {
         try
         {
@@ -283,10 +285,22 @@ public class DocumentController : ControllerBase
             var userEmail = CurrentUserHelper.GetCurrentUserEmail(HttpContext);
             
             Console.WriteLine($"GetClientReadyDocuments - UserId: {userId}, Role: {userRole}, Email: {userEmail}");
+            Console.WriteLine($"Pagination - Page: {page}, PageSize: {pageSize}");
             
-            // Get all approved processed documents
-            var processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(d => 
+            // Validate pagination parameters
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 50) pageSize = 5;
+            
+            // Get all approved processed documents with pagination
+            var totalCount = await _unitOfWork.DocumentProcessed.CountAsync(d => 
                 d.Status == ProcessedDocumentStatus.Approved);
+            
+            var processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(
+                d => d.Status == ProcessedDocumentStatus.Approved,
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+                orderBy: d => d.UpdatedAtUtc ?? d.CreatedAtUtc,
+                orderByDescending: true);
 
             var readyDocuments = new List<ClientReadyDocumentDto>();
             foreach (var doc in processedDocuments)
@@ -313,7 +327,14 @@ public class DocumentController : ControllerBase
                 }
             }
 
-            return Ok(readyDocuments);
+            return Ok(new PagedResult<ClientReadyDocumentDto>
+            {
+                Items = readyDocuments,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            });
         }
         catch (Exception ex)
         {

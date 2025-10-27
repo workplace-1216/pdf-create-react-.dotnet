@@ -31,6 +31,40 @@ public class Repository<T> : IRepository<T> where T : class
         return await _dbSet.Where(predicate).ToListAsync();
     }
 
+    public virtual async Task<IEnumerable<T>> FindAsync(
+        Expression<Func<T, bool>> predicate,
+        int? skip = null,
+        int? take = null,
+        Expression<Func<T, object>>? orderBy = null,
+        bool orderByDescending = false)
+    {
+        var query = _dbSet.Where(predicate);
+
+        if (orderBy != null)
+        {
+            query = orderByDescending 
+                ? query.OrderByDescending(orderBy) 
+                : query.OrderBy(orderBy);
+        }
+
+        if (skip.HasValue)
+        {
+            query = query.Skip(skip.Value);
+        }
+
+        if (take.HasValue)
+        {
+            query = query.Take(take.Value);
+        }
+
+        return await query.ToListAsync();
+    }
+
+    public virtual async Task<int> CountAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.CountAsync(predicate);
+    }
+
     public virtual async Task<T> AddAsync(T entity)
     {
         await _dbSet.AddAsync(entity);
