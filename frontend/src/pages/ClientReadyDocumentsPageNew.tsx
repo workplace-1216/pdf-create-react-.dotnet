@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   FileText,
   Download,
+  Eye,
   CheckCircle,
   XCircle,
   AlertCircle,
   Upload,
   Shield,
   Zap,
-  RefreshCw,
   BarChart3,
   ChevronLeft,
   ChevronRight,
@@ -16,7 +16,8 @@ import {
   Database,
   CheckSquare,
   LogOut,
-  Send
+  Send,
+  Trash2
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { documentApi } from '../services/api'
@@ -62,10 +63,13 @@ const FolderCard: React.FC<{
 }> = ({ folder, onFolderClick, onSelect, isSelected }) => {
   return (
     <div
-      className={`relative bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 hover:bg-white/15 hover:scale-[102%] transition-all duration-300 cursor-pointer group ${
+      className={`relative bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 hover:bg-white/15 hover:scale-[102%] transition-all duration-300 group ${
         isSelected ? 'ring-2 ring-blue-400' : ''
       }`}
-      onClick={() => onFolderClick(folder)}
+      onClick={(e) => {
+        e.stopPropagation()
+        onFolderClick(folder)
+      }}
     >
       {/* Checkbox */}
       <button
@@ -82,11 +86,13 @@ const FolderCard: React.FC<{
         />
       </button>
 
-      {/* Folder SVG Icon */}
-      <div className="relative w-24 h-24 mx-auto mb-4">
+      {/* Folder SVG Icon - Clickable like Windows */}
+      <div 
+        className="relative w-24 h-24 mx-auto mb-4"
+      >
         <svg
           viewBox="0 0 120 100"
-          className="w-full h-full"
+          className="w-full h-full pointer-events-none"
           xmlns="http://www.w3.org/2000/svg"
         >
           {/* Folder base */}
@@ -138,7 +144,7 @@ const FolderCard: React.FC<{
       </div>
 
       {/* Hover effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-2xl transition-opacity duration-300"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-2xl transition-opacity duration-300 pointer-events-none"></div>
     </div>
   )
 }
@@ -680,12 +686,20 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false)
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([])
   const [sending, setSending] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showFolderModal, setShowFolderModal] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState<DocumentFolder | null>(null)
+  const [folderPage, setFolderPage] = useState(1)
+  const folderPageSize = 5
   const [feedbackModalContent, setFeedbackModalContent] = useState<{
     type: 'success' | 'error' | 'info'
     title: string
     message: string
   } | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [pendingDeleteFolderIds, setPendingDeleteFolderIds] = useState<string[]>([])
 
   // Helper function to clean up regex patterns and show proper extracted values
   const getDisplayValue = (value: string, type: string) => {
@@ -967,6 +981,26 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     setSelectedFolderIds([])
   }, [pagination.page])
 
+  // Prevent body scroll when folder modal is open
+  useEffect(() => {
+    if (showFolderModal) {
+      const scrollY = window.scrollY
+      const body = window.document.body
+      body.style.position = 'fixed'
+      body.style.top = `-${scrollY}px`
+      body.style.width = '100%'
+      body.style.overflow = 'hidden'
+      
+      return () => {
+        body.style.position = ''
+        body.style.top = ''
+        body.style.width = ''
+        body.style.overflow = ''
+        window.scrollTo(0, scrollY)
+      }
+    }
+  }, [showFolderModal])
+
   // Helper function to show feedback modal
   const showFeedback = (type: 'success' | 'error' | 'info', title: string, message: string) => {
     setFeedbackModalContent({ type, title, message })
@@ -997,11 +1031,22 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   }
 
   const handleFolderClick = (folder: DocumentFolder) => {
-    // Open first document from folder, or show folder details
-    if (folder.documents.length > 0) {
-      setSelectedDocId(folder.documents[0].id)
-      setDrawerOpen(true)
-    }
+    setSelectedFolder(folder)
+    setFolderPage(1)
+    // Do not open modal; render inline
+    setShowFolderModal(false)
+  }
+
+  const handleCloseFolderModal = () => {
+    setShowFolderModal(false)
+    setSelectedFolder(null)
+    setFolderPage(1)
+  }
+
+  const handleDocumentFromFolderClick = (docId: string) => {
+    setSelectedDocId(docId)
+    setDrawerOpen(true)
+    setShowFolderModal(false) // Close folder modal when opening document (kept for safety)
   }
 
   const handleSendSelectedFolders = async () => {
@@ -1032,6 +1077,71 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     } finally {
       setSending(false)
     }
+  }
+
+  const handleDownloadSelectedFolders = async () => {
+    if (selectedFolderIds.length === 0) return
+    setDownloading(true)
+    try {
+      const documentIds: number[] = []
+      selectedFolderIds.forEach(folderId => {
+        const folder = folders.find(f => f.id === folderId)
+        if (folder) {
+          folder.documents.forEach(doc => documentIds.push(Number(doc.id)))
+        }
+      })
+      if (documentIds.length === 0) return
+      const blob = await documentApi.downloadBatch(documentIds)
+      const url = window.URL.createObjectURL(blob)
+      const link = window.document.createElement('a')
+      link.href = url
+      const dateStr = new Date().toISOString().slice(0, 10)
+      link.download = `documentos_${dateStr}.zip`
+      window.document.body.appendChild(link)
+      link.click()
+      window.document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      showFeedback('success', 'Descarga iniciada', `Se descargará un ZIP con ${documentIds.length} documento(s).`)
+    } catch (error) {
+      console.error('Error downloading batch:', error)
+      showFeedback('error', 'Error de Descarga', 'No se pudo descargar el ZIP de documentos seleccionados.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const handleDeleteSelectedFolders = async () => {
+    if (selectedFolderIds.length === 0) return
+    // Open confirmation modal instead of deleting immediately
+    setPendingDeleteFolderIds([...selectedFolderIds])
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDeleteFolders = async () => {
+    if (pendingDeleteFolderIds.length === 0) {
+      setShowDeleteConfirm(false)
+      return
+    }
+    setDeleting(true)
+    try {
+      // TODO: call backend delete when available
+      const remaining = folders.filter(f => !pendingDeleteFolderIds.includes(f.id))
+      setFolders(remaining)
+      setSelectedFolderIds([])
+      setPendingDeleteFolderIds([])
+      setShowDeleteConfirm(false)
+      showFeedback('success', 'Carpetas eliminadas', 'Las carpetas seleccionadas fueron eliminadas de la vista.')
+    } catch (error) {
+      console.error('Error deleting documents:', error)
+      showFeedback('error', 'Error al eliminar', 'No se pudieron eliminar las carpetas seleccionadas.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const cancelDeleteFolders = () => {
+    setShowDeleteConfirm(false)
+    setPendingDeleteFolderIds([])
   }
 
   // Upload handlers
@@ -1421,7 +1531,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 {/* Modern Header */}
                 <div className="relative z-10 px-2 sm:px-3 py-2 sm:py-3 border-b border-white/20 bg-gradient-to-r from-white/10 to-blue-500/10 backdrop-blur-sm">
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-start">
                     <div className="flex items-center space-x-3">
                       <div className="relative">
                         <div className="p-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl shadow-2xl">
@@ -1435,26 +1545,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                         <p className="text-xs text-blue-200/70">Verificación de cumplimiento</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => fetchReadyDocuments(pagination.page)}
-                      disabled={loading}
-                      className="relative px-3 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 border border-transparent rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-blue-500/25 hover:scale-[101%] transition-all duration-300"
-                    >
-                      {loading ? (
-                        <>
-                          <div className="relative">
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
-                            <div className="absolute inset-0 animate-ping rounded-full h-4 w-4 border border-white/20"></div>
-                          </div>
-                          <span className="font-medium">Actualizando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
-                          <span className="font-medium">Actualizar</span>
-                        </>
-                      )}
-                    </button>
                   </div>
 
                   {/* Modern Re-processing Notice */}
@@ -1481,30 +1571,66 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   {/* Bulk Actions */}
                   {selectedFolderIds.length > 0 && (
                     <div className="relative z-10 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3 backdrop-blur-sm">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center">
                           <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300 mr-2" />
                           <p className="text-xs sm:text-sm text-blue-200 font-medium">
                             {selectedFolderIds.length} carpeta(s) seleccionada(s)
                           </p>
                         </div>
-                        <button
-                          onClick={handleSendSelectedFolders}
-                          disabled={sending}
-                          className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 border border-transparent rounded-lg hover:from-amber-700 hover:via-orange-700 hover:to-rose-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-amber-500/25 hover:scale-105 transition-all duration-300"
-                        >
-                          {sending ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white"></div>
-                              <span>Enviando...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-3 w-3" />
-                              <span>Enviar Seleccionados</span>
-                            </>
-                          )}
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={handleDownloadSelectedFolders}
+                            disabled={downloading}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 border border-transparent rounded-lg hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-green-500/25 hover:scale-105 transition-all duration-300"
+                          >
+                            {downloading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white"></div>
+                                <span>Descargando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Download className="h-3 w-3" />
+                                <span>Descargar todo</span>
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={handleDeleteSelectedFolders}
+                            disabled={deleting}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 border border-transparent rounded-lg hover:from-red-700 hover:to-rose-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-rose-500/25 hover:scale-105 transition-all duration-300"
+                          >
+                            {deleting ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white"></div>
+                                <span>Eliminando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="h-3 w-3" />
+                                <span>Eliminar</span>
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={handleSendSelectedFolders}
+                            disabled={sending}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 border border-transparent rounded-lg hover:from-amber-700 hover:via-orange-700 hover:to-rose-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-amber-500/25 hover:scale-105 transition-all duration-300"
+                          >
+                            {sending ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white"></div>
+                                <span>Enviando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-3 w-3" />
+                                <span>Enviar</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1512,18 +1638,107 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
                 {/* Modern Folder Grid */}
                 <div className="relative z-10 w-full">
-                  {folders.length === 0 ? (
-                    <div className="text-center py-8 sm:py-12">
-                      <div className="relative mx-auto w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6">
-                        <div className="absolute inset-0 bg-gradient-to-r from-gray-500/30 to-gray-600/30 rounded-full blur-lg"></div>
-                        <div className="relative w-full h-full bg-gradient-to-r from-gray-500/50 to-gray-600/50 rounded-full flex items-center justify-center">
-                          <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-gray-300" />
+                  {selectedFolder ? (
+                    <div className="p-4 sm:p-6">
+                      {/* Inline folder header */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => {
+                              setSelectedFolder(null)
+                              setFolderPage(1)
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all duration-300 flex items-center space-x-1"
+                          >
+                            <ChevronLeft className="h-3 w-3" />
+                            <span>Volver</span>
+                          </button>
+                          <div>
+                            <h3 className="text-sm sm:text-base font-bold text-white">{selectedFolder.folderName}</h3>
+                            <p className="text-xs text-blue-200/70">{selectedFolder.documentCount} {selectedFolder.documentCount === 1 ? 'documento' : 'documentos'}</p>
+                          </div>
                         </div>
                       </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3">No hay documentos finalizados</h3>
-                      <p className="text-sm sm:text-base text-gray-300 max-w-md mx-auto">
-                        Sube un documento PDF para comenzar el proceso de verificación
-                      </p>
+
+                      {/* Documents list */}
+                      <div className="space-y-2 mb-4">
+                        {selectedFolder.documents
+                          .slice((folderPage - 1) * folderPageSize, folderPage * folderPageSize)
+                          .map((doc) => (
+                            <div
+                              key={doc.id}
+                              onClick={() => handleDocumentFromFolderClick(doc.id)}
+                              className="flex items-center space-x-4 p-3 bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-all duration-200 group border border-white/10 hover:border-white/20"
+                            >
+                              <div className="flex-shrink-0">
+                                <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded flex items-center justify-center shadow-lg">
+                                  <FileText className="h-6 w-6 text-white" />
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate group-hover:text-blue-200">
+                                  {doc.proveedorEmail || `Documento ${doc.id}`}
+                                </p>
+                                <div className="flex items-center space-x-4 mt-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs text-white/60">RFC:</span>
+                                    <span className="text-xs text-white/80 font-mono">{getDisplayValue(doc.rfcEmisor, 'RFC')}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs text-white/60">Período:</span>
+                                    <span className="text-xs text-white/80">{getDisplayValue(doc.periodo, 'PERIODO')}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs text-white/60">Monto:</span>
+                                    <span className="text-xs text-white/80">{getDisplayValue(doc.montoTotalMxn, 'MONTO')}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 flex-shrink-0">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDocumentFromFolderClick(doc.id) }}
+                                  className="p-2 text-blue-300 hover:text-blue-100 hover:bg-blue-500/20 rounded-lg transition-all duration-200"
+                                  title="Ver documento"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={async (e) => { e.stopPropagation(); await handleDownload(doc.id) }}
+                                  className="p-2 text-green-300 hover:text-green-100 hover:bg-green-500/20 rounded-lg transition-all duration-200"
+                                  title="Descargar documento"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+
+                      {/* Pagination */}
+                      {Math.ceil(selectedFolder.documents.length / folderPageSize) > 1 && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-blue-200/70">Página {folderPage} de {Math.ceil(selectedFolder.documents.length / folderPageSize)}</span>
+                            <span className="text-xs text-blue-200/50">({selectedFolder.documents.length} documento{selectedFolder.documents.length !== 1 ? 's' : ''} total)</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setFolderPage(prev => Math.max(1, prev - 1))}
+                              disabled={folderPage === 1}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                            >
+                              <ChevronLeft className="h-3 w-3" /> <span>Anterior</span>
+                            </button>
+                            <button
+                              onClick={() => setFolderPage(prev => Math.min(Math.ceil(selectedFolder.documents.length / folderPageSize), prev + 1))}
+                              disabled={folderPage >= Math.ceil(selectedFolder.documents.length / folderPageSize)}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                            >
+                              <span>Siguiente</span> <ChevronRight className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="p-4 sm:p-6">
@@ -1737,6 +1952,51 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   }`}
                 >
                   Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={(e) => { if (e.target === e.currentTarget && !deleting) cancelDeleteFolders() }}
+          >
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative">
+              <button
+                onClick={cancelDeleteFolders}
+                disabled={deleting}
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200 disabled:opacity-50"
+              >
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
+              </button>
+              <div className="mb-4 sm:mb-6 pr-8">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-500">
+                    <Trash2 className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Confirmar eliminación</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-blue-200/80">
+                  {pendingDeleteFolderIds.length} carpeta(s) seleccionada(s). ¿Deseas eliminar las carpetas y todos sus documentos de la vista?
+                </p>
+              </div>
+              <div className="flex items-center justify-end space-x-3">
+                <button
+                  onClick={cancelDeleteFolders}
+                  disabled={deleting}
+                  className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-white/10 hover:bg-white/15 border border-white/20 rounded-xl transition-all duration-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDeleteFolders}
+                  disabled={deleting}
+                  className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-xl hover:from-red-700 hover:to-rose-700 transition-all duration-300"
+                >
+                  {deleting ? 'Eliminando...' : 'Sí, eliminar'}
                 </button>
               </div>
             </div>
