@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   FileText,
   Users,
@@ -6,9 +6,10 @@ import {
   CheckCircle,
   AlertCircle,
   ArrowUpRight,
-  DollarSign,
   Server
 } from 'lucide-react'
+import { adminApi } from '../services/api'
+import type { AdminStats, ReportsAnalyticsResponse } from '../types/api'
 import {
   LineChart,
   Line,
@@ -25,56 +26,35 @@ import {
   Legend
 } from 'recharts'
 
-// Mock data for charts
-const documentTrendsData = [
-  { name: 'Ene', documents: 120, processed: 115 },
-  { name: 'Feb', documents: 150, processed: 145 },
-  { name: 'Mar', documents: 180, processed: 175 },
-  { name: 'Abr', documents: 200, processed: 195 },
-  { name: 'May', documents: 220, processed: 215 },
-  { name: 'Jun', documents: 250, processed: 245 },
-  { name: 'Jul', documents: 280, processed: 275 },
-  { name: 'Ago', documents: 300, processed: 295 },
-  { name: 'Sep', documents: 320, processed: 315 },
-  { name: 'Oct', documents: 350, processed: 345 },
-  { name: 'Nov', documents: 380, processed: 375 },
-  { name: 'Dic', documents: 400, processed: 395 }
-]
-
-const userActivityData = [
-  { time: '00:00', users: 5 },
-  { time: '04:00', users: 2 },
-  { time: '08:00', users: 25 },
-  { time: '12:00', users: 45 },
-  { time: '16:00', users: 60 },
-  { time: '20:00', users: 35 },
-  { time: '24:00', users: 8 }
-]
-
-const documentStatusData = [
-  { name: 'Procesados', value: 85, color: '#10B981' },
-  { name: 'Pendientes', value: 10, color: '#F59E0B' },
-  { name: 'Error', value: 5, color: '#EF4444' }
-]
-
-const systemMetricsData = [
-  { name: 'CPU', value: 45, max: 100 },
-  { name: 'RAM', value: 68, max: 100 },
-  { name: 'Disco', value: 32, max: 100 },
-  { name: 'Red', value: 78, max: 100 }
-]
+// Pie colors
+const STATUS_COLORS = {
+  processed: '#10B981',
+  pending: '#F59E0B',
+  error: '#EF4444'
+}
 
 export const AdminDashboardPage: React.FC = () => {
-  const [stats] = useState({
-    totalDocuments: 1247,
-    activeUsers: 89,
-    templates: 12,
-    processedToday: 45,
-    pendingReview: 8,
-    systemHealth: 99.8,
-    revenue: 125000,
-    conversionRate: 78.5
-  })
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [analytics, setAnalytics] = useState<ReportsAnalyticsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [s, a] = await Promise.all([
+          adminApi.getStats(),
+          adminApi.getAnalytics('30d')
+        ])
+        setStats(s)
+        setAnalytics(a)
+      } catch (error) {
+        console.error('Error loading dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
 
   const [recentActivity] = useState([
     { id: 1, type: 'user', message: 'Nuevo cliente registrado', time: '2 min', status: 'success' },
@@ -102,6 +82,14 @@ export const AdminDashboardPage: React.FC = () => {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="p-6 px-20 flex items-center justify-center min-h-screen">
+        <div className="text-white text-xl">Cargando estadísticas...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 px-20 space-y-6">
       {/* Key Metrics Cards */}
@@ -121,8 +109,8 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-blue-200/70 font-medium mb-1">Total Documentos</p>
-              <p className="text-2xl font-bold text-white">{stats.totalDocuments.toLocaleString()}</p>
-              <p className="text-xs text-green-400 mt-2">+145 este mes</p>
+              <p className="text-2xl font-bold text-white">{stats?.totalDocuments?.toLocaleString() || '0'}</p>
+              <p className="text-xs text-green-400 mt-2">Procesados: {stats?.processedDocuments || 0}</p>
             </div>
           </div>
         </div>
@@ -142,29 +130,29 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-green-200/70 font-medium mb-1">Usuarios Activos</p>
-              <p className="text-2xl font-bold text-white">{stats.activeUsers}</p>
-              <p className="text-xs text-green-400 mt-2">En línea ahora</p>
+              <p className="text-2xl font-bold text-white">{stats?.activeUsers || 0}</p>
+              <p className="text-xs text-green-400 mt-2">Total: {stats?.totalUsers || 0}</p>
             </div>
           </div>
         </div>
 
-        {/* Revenue */}
+        {/* Processed Today */}
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-105 transition-all duration-500">
           <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl shadow-lg">
-                <DollarSign className="h-6 w-6 text-white" />
+                <CheckCircle className="h-6 w-6 text-white" />
               </div>
               <div className="flex items-center space-x-1 text-green-400">
                 <ArrowUpRight className="h-4 w-4" />
-                <span className="text-sm font-medium">+15%</span>
+                <span className="text-sm font-medium">Hoy</span>
               </div>
             </div>
             <div>
-              <p className="text-sm text-yellow-200/70 font-medium mb-1">Ingresos Mensuales</p>
-              <p className="text-2xl font-bold text-white">${stats.revenue.toLocaleString()}</p>
-              <p className="text-xs text-green-400 mt-2">+$18K este mes</p>
+              <p className="text-sm text-yellow-200/70 font-medium mb-1">Procesados Hoy</p>
+              <p className="text-2xl font-bold text-white">{stats?.processedToday || 0}</p>
+              <p className="text-xs text-green-400 mt-2">Pendientes: {stats?.pendingDocuments || 0}</p>
             </div>
           </div>
         </div>
@@ -183,9 +171,9 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <p className="text-sm text-purple-200/70 font-medium mb-1">Salud del Sistema</p>
-              <p className="text-2xl font-bold text-white">{stats.systemHealth}%</p>
-              <p className="text-xs text-green-400 mt-2">Todo funcionando</p>
+              <p className="text-sm text-purple-200/70 font-medium mb-1">Documentos con Error</p>
+              <p className="text-2xl font-bold text-white">{stats?.errorDocuments || 0}</p>
+              <p className="text-xs text-red-400 mt-2">Requieren atención</p>
             </div>
           </div>
         </div>
@@ -208,7 +196,7 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={documentTrendsData}>
+            <LineChart data={(analytics?.monthlyTrends || []).map(m => ({ name: m.month, documents: m.documents, processed: m.processed }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" />
               <YAxis stroke="rgba(255,255,255,0.6)" />
@@ -240,7 +228,7 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={userActivityData}>
+            <AreaChart data={analytics?.userActivity || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis dataKey="time" stroke="rgba(255,255,255,0.6)" />
               <YAxis stroke="rgba(255,255,255,0.6)" />
@@ -271,7 +259,11 @@ export const AdminDashboardPage: React.FC = () => {
           <ResponsiveContainer width="100%" height={250}>
             <RechartsPieChart>
               <Pie
-                data={documentStatusData}
+                data={[
+                  { name: 'Procesados', value: stats?.processedDocuments || 0, color: STATUS_COLORS.processed },
+                  { name: 'Pendientes', value: stats?.pendingDocuments || 0, color: STATUS_COLORS.pending },
+                  { name: 'Error', value: stats?.errorDocuments || 0, color: STATUS_COLORS.error }
+                ]}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -279,8 +271,12 @@ export const AdminDashboardPage: React.FC = () => {
                 paddingAngle={5}
                 dataKey="value"
               >
-                {documentStatusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                {[
+                  STATUS_COLORS.processed,
+                  STATUS_COLORS.pending,
+                  STATUS_COLORS.error
+                ].map((c, index) => (
+                  <Cell key={`cell-${index}`} fill={c} />
                 ))}
               </Pie>
               <Tooltip 
@@ -296,12 +292,12 @@ export const AdminDashboardPage: React.FC = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* System Metrics */}
+        {/* System Metrics (derived from backend stats) */}
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-bold text-white">Métricas del Sistema</h3>
-              <p className="text-sm text-blue-200/80">Rendimiento actual</p>
+              <p className="text-sm text-blue-200/80">Derivadas de estadísticas</p>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -309,23 +305,36 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {systemMetricsData.map((metric, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <span className="text-sm text-white">{metric.name}</span>
+            {(() => {
+              const total = stats?.totalDocuments || 0
+              const processedPct = total ? Math.round(((stats?.processedDocuments || 0) * 100) / total) : 0
+              const pendingPct = total ? Math.round(((stats?.pendingDocuments || 0) * 100) / total) : 0
+              const errorPct = total ? Math.round(((stats?.errorDocuments || 0) * 100) / total) : 0
+              const successRate = analytics?.stats.successRate ?? (total ? Math.round(((total - (stats?.errorDocuments || 0)) * 100) / total) : 0)
+              const metrics = [
+                { name: 'Tasa de Éxito', value: successRate },
+                { name: 'Procesados', value: processedPct },
+                { name: 'Pendientes', value: pendingPct },
+                { name: 'Errores', value: errorPct }
+              ]
+              return metrics.map((metric, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <span className="text-sm text-white">{metric.name}</span>
+                    </div>
+                    <span className="text-sm font-medium text-white">{metric.value}%</span>
                   </div>
-                  <span className="text-sm font-medium text-white">{metric.value}%</span>
+                  <div className="w-full bg-white/10 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${metric.value}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full bg-white/10 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${metric.value}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+              ))
+            })()}
           </div>
         </div>
 

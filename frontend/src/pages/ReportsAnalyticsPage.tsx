@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Download,
   RefreshCw,
@@ -27,75 +27,42 @@ import {
   Legend
 } from 'recharts'
 import * as XLSX from 'xlsx'
+import { adminApi } from '../services/api'
+import type { ReportsAnalyticsResponse } from '../types/api'
 
-// Mock data for charts
-const monthlyTrendsData = [
-  { month: 'Ene', documents: 120, processed: 115, errors: 5 },
-  { month: 'Feb', documents: 150, processed: 145, errors: 5 },
-  { month: 'Mar', documents: 180, processed: 175, errors: 5 },
-  { month: 'Abr', documents: 200, processed: 195, errors: 5 },
-  { month: 'May', documents: 220, processed: 215, errors: 5 },
-  { month: 'Jun', documents: 250, processed: 245, errors: 5 },
-  { month: 'Jul', documents: 280, processed: 275, errors: 5 },
-  { month: 'Ago', documents: 300, processed: 295, errors: 5 },
-  { month: 'Sep', documents: 320, processed: 315, errors: 5 },
-  { month: 'Oct', documents: 350, processed: 345, errors: 5 },
-  { month: 'Nov', documents: 380, processed: 375, errors: 5 },
-  { month: 'Dic', documents: 400, processed: 395, errors: 5 }
-]
-
-const userActivityData = [
-  { time: '00:00', users: 5, documents: 2 },
-  { time: '04:00', users: 2, documents: 1 },
-  { time: '08:00', users: 25, documents: 15 },
-  { time: '12:00', users: 45, documents: 35 },
-  { time: '16:00', users: 60, documents: 50 },
-  { time: '20:00', users: 35, documents: 25 },
-  { time: '24:00', users: 8, documents: 3 }
-]
-
-const documentTypesData = [
-  { name: 'Facturas', value: 45, color: '#3B82F6' },
-  { name: 'Recibos', value: 30, color: '#10B981' },
-  { name: 'Estados de Cuenta', value: 20, color: '#F59E0B' },
-  { name: 'Otros', value: 5, color: '#EF4444' }
-]
-
-const processingTimeData = [
-  { range: '0-30s', count: 120 },
-  { range: '30s-1m', count: 85 },
-  { range: '1-2m', count: 45 },
-  { range: '2-5m', count: 20 },
-  { range: '5m+', count: 5 }
-]
-
-const errorTypesData = [
-  { type: 'Formato Inválido', count: 15, percentage: 40 },
-  { type: 'Datos Faltantes', count: 10, percentage: 27 },
-  { type: 'Calidad de Imagen', count: 8, percentage: 21 },
-  { type: 'Otros', count: 4, percentage: 12 }
-]
+// Pie colors mapping
+const TYPE_COLORS: string[] = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']
 
 export const ReportsAnalyticsPage: React.FC = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d')
+  const [selectedPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [data, setData] = useState<ReportsAnalyticsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchAnalytics = async (period: '7d' | '30d' | '90d' | '1y') => {
+    try {
+      setLoading(true)
+      setError(null)
+      const res = await adminApi.getAnalytics(period)
+      setData(res)
+    } catch (err) {
+      console.error('Error fetching analytics:', err)
+      setError('No se pudieron cargar los reportes.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAnalytics(selectedPeriod)
+  }, [])
 
   const handleRefreshData = async () => {
     setIsRefreshing(true)
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Force component re-render by updating state
-      setSelectedPeriod(prev => prev)
-      
-      // Show success feedback
-      console.log('Data refreshed successfully for period:', selectedPeriod)
-      
-      // You could also trigger a page reload if needed:
-      // window.location.reload()
-      
+      await fetchAnalytics(selectedPeriod)
     } catch (error) {
       console.error('Error refreshing data:', error)
     } finally {
@@ -110,14 +77,13 @@ export const ReportsAnalyticsPage: React.FC = () => {
     // Sheet 1: Key Metrics
     const metricsData = [
       ['Métrica', 'Valor', 'Período'],
-      ['Total Documentos', stats.totalDocuments.toString(), selectedPeriod],
-      ['Documentos Hoy', stats.processedToday.toString(), selectedPeriod],
-      ['Tiempo Promedio', stats.averageProcessingTime, selectedPeriod],
-      ['Tasa de Éxito', `${stats.successRate}%`, selectedPeriod],
-      ['Total Usuarios', stats.totalUsers.toString(), selectedPeriod],
-      ['Usuarios Activos', stats.activeUsers.toString(), selectedPeriod],
-      ['Ingresos', `$${stats.revenue.toLocaleString()}`, selectedPeriod],
-      ['Tasa de Crecimiento', `${stats.growthRate}%`, selectedPeriod]
+      ['Total Documentos', (data?.stats.totalDocuments ?? 0).toString(), selectedPeriod],
+      ['Documentos Hoy', (data?.stats.processedToday ?? 0).toString(), selectedPeriod],
+      ['Tiempo Promedio', data?.stats.averageProcessingTime ?? '-', selectedPeriod],
+      ['Tasa de Éxito', `${data?.stats.successRate ?? 0}%`, selectedPeriod],
+      ['Total Usuarios', (data?.stats.totalUsers ?? 0).toString(), selectedPeriod],
+      ['Usuarios Activos', (data?.stats.activeUsers ?? 0).toString(), selectedPeriod],
+      ['Tasa de Crecimiento', `${data?.stats.growthRate ?? 0}%`, selectedPeriod]
     ]
     const metricsWs = XLSX.utils.aoa_to_sheet(metricsData)
     XLSX.utils.book_append_sheet(wb, metricsWs, 'Métricas Clave')
@@ -125,12 +91,12 @@ export const ReportsAnalyticsPage: React.FC = () => {
     // Sheet 2: Monthly Trends
     const trendsData = [
       ['Mes', 'Documentos', 'Procesados', 'Errores'],
-      ...monthlyTrendsData.map(item => [
+      ...((data?.monthlyTrends || []).map(item => [
         item.month,
         item.documents.toString(),
         item.processed.toString(),
         item.errors.toString()
-      ])
+      ]))
     ]
     const trendsWs = XLSX.utils.aoa_to_sheet(trendsData)
     XLSX.utils.book_append_sheet(wb, trendsWs, 'Tendencias Mensuales')
@@ -138,23 +104,22 @@ export const ReportsAnalyticsPage: React.FC = () => {
     // Sheet 3: User Activity
     const activityData = [
       ['Hora', 'Usuarios', 'Documentos'],
-      ...userActivityData.map(item => [
+      ...((data?.userActivity || []).map(item => [
         item.time,
         item.users.toString(),
         item.documents.toString()
-      ])
+      ]))
     ]
     const activityWs = XLSX.utils.aoa_to_sheet(activityData)
     XLSX.utils.book_append_sheet(wb, activityWs, 'Actividad de Usuarios')
     
     // Sheet 4: Document Types
     const typesData = [
-      ['Tipo', 'Cantidad', 'Color'],
-      ...documentTypesData.map(item => [
+      ['Tipo', 'Cantidad'],
+      ...((data?.documentTypes || []).map(item => [
         item.name,
-        item.value.toString(),
-        item.color
-      ])
+        item.value.toString()
+      ]))
     ]
     const typesWs = XLSX.utils.aoa_to_sheet(typesData)
     XLSX.utils.book_append_sheet(wb, typesWs, 'Tipos de Documentos')
@@ -163,16 +128,21 @@ export const ReportsAnalyticsPage: React.FC = () => {
     XLSX.writeFile(wb, `reportes_${selectedPeriod}.xlsx`)
   }
 
-  const [stats] = useState({
-    totalDocuments: 2847,
-    processedToday: 45,
-    averageProcessingTime: '1.2m',
-    successRate: 98.5,
-    totalUsers: 89,
-    activeUsers: 67,
-    revenue: 125000,
-    growthRate: 12.5
-  })
+  if (loading && !data) {
+    return (
+      <div className="p-6 px-20">
+        <div className="text-white">Cargando reportes...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 px-20">
+        <div className="text-red-300">{error}</div>
+      </div>
+    )
+  }
 
 
   return (
@@ -213,13 +183,13 @@ export const ReportsAnalyticsPage: React.FC = () => {
               </div>
               <div className="flex items-center space-x-1 text-green-400">
                 <ArrowUpRight className="h-4 w-4" />
-                <span className="text-sm font-medium">+{stats.growthRate}%</span>
+                <span className="text-sm font-medium">+{data?.stats.growthRate ?? 0}%</span>
               </div>
             </div>
             <div>
               <p className="text-sm text-blue-200/70 font-medium mb-1">Total Documentos</p>
-              <p className="text-2xl font-bold text-white">{stats.totalDocuments.toLocaleString()}</p>
-              <p className="text-xs text-green-400 mt-2">+{stats.processedToday} hoy</p>
+              <p className="text-2xl font-bold text-white">{data?.stats.totalDocuments.toLocaleString()}</p>
+              <p className="text-xs text-green-400 mt-2">+{data?.stats.processedToday} hoy</p>
             </div>
           </div>
         </div>
@@ -238,7 +208,7 @@ export const ReportsAnalyticsPage: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-green-200/70 font-medium mb-1">Tasa de Éxito</p>
-              <p className="text-2xl font-bold text-white">{stats.successRate}%</p>
+              <p className="text-2xl font-bold text-white">{data?.stats.successRate}%</p>
               <p className="text-xs text-green-400 mt-2">Excelente rendimiento</p>
             </div>
           </div>
@@ -258,7 +228,7 @@ export const ReportsAnalyticsPage: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-yellow-200/70 font-medium mb-1">Tiempo Promedio</p>
-              <p className="text-2xl font-bold text-white">{stats.averageProcessingTime}</p>
+              <p className="text-2xl font-bold text-white">{data?.stats.averageProcessingTime}</p>
               <p className="text-xs text-green-400 mt-2">Mejorando eficiencia</p>
             </div>
           </div>
@@ -278,8 +248,8 @@ export const ReportsAnalyticsPage: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-purple-200/70 font-medium mb-1">Usuarios Activos</p>
-              <p className="text-2xl font-bold text-white">{stats.activeUsers}</p>
-              <p className="text-xs text-green-400 mt-2">de {stats.totalUsers} total</p>
+              <p className="text-2xl font-bold text-white">{data?.stats.activeUsers}</p>
+              <p className="text-xs text-green-400 mt-2">de {data?.stats.totalUsers} total</p>
             </div>
           </div>
         </div>
@@ -304,7 +274,7 @@ export const ReportsAnalyticsPage: React.FC = () => {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={monthlyTrendsData}>
+            <LineChart data={data?.monthlyTrends || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis dataKey="month" stroke="rgba(255,255,255,0.6)" />
               <YAxis stroke="rgba(255,255,255,0.6)" />
@@ -339,7 +309,7 @@ export const ReportsAnalyticsPage: React.FC = () => {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={userActivityData}>
+            <AreaChart data={data?.userActivity || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis dataKey="time" stroke="rgba(255,255,255,0.6)" />
               <YAxis stroke="rgba(255,255,255,0.6)" />
@@ -373,7 +343,7 @@ export const ReportsAnalyticsPage: React.FC = () => {
           <ResponsiveContainer width="100%" height={250}>
             <RechartsPieChart>
               <Pie
-                data={documentTypesData}
+                data={(data?.documentTypes || []).map((d, i) => ({ ...d, color: TYPE_COLORS[i % TYPE_COLORS.length] }))}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -381,8 +351,8 @@ export const ReportsAnalyticsPage: React.FC = () => {
                 paddingAngle={5}
                 dataKey="value"
               >
-                {documentTypesData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                {(data?.documentTypes || []).map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={TYPE_COLORS[index % TYPE_COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip 
@@ -409,7 +379,7 @@ export const ReportsAnalyticsPage: React.FC = () => {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={processingTimeData}>
+            <BarChart data={data?.processingTime || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis dataKey="range" stroke="rgba(255,255,255,0.6)" />
               <YAxis stroke="rgba(255,255,255,0.6)" />
@@ -437,7 +407,7 @@ export const ReportsAnalyticsPage: React.FC = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {errorTypesData.map((error, index) => (
+            {(data?.errorTypes || []).map((error, index) => (
               <div key={index} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">

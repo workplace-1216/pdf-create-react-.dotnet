@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   FileText,
   Download,
@@ -16,6 +16,8 @@ import {
   XCircle
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { adminApi } from '../services/api'
+import type { AdminDocument } from '../types/api'
 
 interface Document {
   id: string
@@ -129,87 +131,50 @@ export const DocumentManagementPage: React.FC = () => {
     link.click()
   }
 
-  const [documents] = useState<Document[]>([
-    {
-      id: '1',
-      fileName: 'factura_enero_2024.pdf',
-      uploader: 'María González',
-      uploadDate: '2024-01-15 14:30',
-      status: 'Completado',
-      fileSize: '2.3 MB',
-      documentType: 'Factura',
-      extractedData: {
-        rfc: 'ABC123456789',
-        periodo: '01/2024',
-        monto: '$15,450.00'
-      }
-    },
-    {
-      id: '2',
-      fileName: 'recibo_febrero_2024.pdf',
-      uploader: 'Carlos Rodríguez',
-      uploadDate: '2024-01-15 12:15',
-      status: 'Procesando',
-      fileSize: '1.8 MB',
-      documentType: 'Recibo',
-      extractedData: {
-        rfc: 'DEF987654321',
-        periodo: '02/2024',
-        monto: '$8,750.00'
-      }
-    },
-    {
-      id: '3',
-      fileName: 'estado_cuenta_marzo.pdf',
-      uploader: 'Ana Martínez',
-      uploadDate: '2024-01-14 16:45',
-      status: 'Error',
-      fileSize: '3.1 MB',
-      documentType: 'Extracto',
-      extractedData: {
-        rfc: 'N/A',
-        periodo: 'N/A',
-        monto: 'N/A'
-      }
-    },
-    {
-      id: '4',
-      fileName: 'factura_abril_2024.pdf',
-      uploader: 'Luis Hernández',
-      uploadDate: '2024-01-10 09:20',
-      status: 'Pendiente de revisión',
-      fileSize: '2.7 MB',
-      documentType: 'Factura',
-      extractedData: {
-        rfc: 'GHI456789123',
-        periodo: '04/2024',
-        monto: '$22,100.00'
-      }
-    },
-    {
-      id: '5',
-      fileName: 'recibo_mayo_2024.pdf',
-      uploader: 'Patricia López',
-      uploadDate: '2024-01-08 11:30',
-      status: 'Completado',
-      fileSize: '1.5 MB',
-      documentType: 'Recibo',
-      extractedData: {
-        rfc: 'JKL789123456',
-        periodo: '05/2024',
-        monto: '$12,300.00'
-      }
-    }
-  ])
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [loading, setLoading] = useState(true)
+  const [totalDocuments, setTotalDocuments] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
-  const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doc.uploader.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = filterStatus === 'All' || doc.status === filterStatus
-    const matchesType = filterType === 'All' || doc.documentType === filterType
-    
-    return matchesSearch && matchesStatus && matchesType
-  })
+  useEffect(() => {
+    fetchDocuments()
+  }, [currentPage, searchTerm, filterStatus])
+
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true)
+      const status = filterStatus === 'All' ? undefined : filterStatus
+      const search = searchTerm || undefined
+
+      const response = await adminApi.getDocuments(currentPage, pageSize, search, status)
+      
+      // Convert AdminDocument to Document format
+      const convertedDocuments: Document[] = response.items.map(adminDoc => ({
+        id: adminDoc.id,
+        fileName: adminDoc.fileName,
+        uploader: adminDoc.uploader,
+        uploadDate: adminDoc.uploadDate,
+        status: adminDoc.status as 'Procesando' | 'Completado' | 'Error' | 'Pendiente de revisión',
+        fileSize: adminDoc.fileSize,
+        documentType: adminDoc.documentType,
+        extractedData: {
+          rfc: adminDoc.extractedData.rfc,
+          periodo: adminDoc.extractedData.periodo,
+          monto: adminDoc.extractedData.monto
+        }
+      }))
+
+      setDocuments(convertedDocuments)
+      setTotalDocuments(response.totalCount)
+    } catch (error) {
+      console.error('Error fetching documents:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredDocuments = documents
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -240,13 +205,21 @@ export const DocumentManagementPage: React.FC = () => {
     }
   }
 
+  if (loading && documents.length === 0) {
+    return (
+      <div className="p-6 px-20 flex items-center justify-center min-h-screen">
+        <div className="text-white text-xl">Cargando documentos...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 px-20">
       {/* Header Actions */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white">Gestión de Documentos</h2>
-          <p className="text-sm text-blue-200/80">Administrar documentos procesados y pendientes</p>
+          <p className="text-sm text-blue-200/80">Administrar documentos procesados y pendientes ({totalDocuments} documentos)</p>
         </div>
         <div className="flex items-center space-x-3">
           <button 

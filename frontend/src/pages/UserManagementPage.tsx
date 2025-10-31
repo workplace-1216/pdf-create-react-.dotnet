@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Users,
   UserPlus,
@@ -17,6 +17,9 @@ import {
   ChevronDown
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { adminApi } from '../services/api'
+import type { AdminUser } from '../types/api'
+import { useAuth } from '../contexts/AuthContext'
 
 interface User {
   id: string
@@ -30,6 +33,7 @@ interface User {
 }
 
 export const UserManagementPage: React.FC = () => {
+  const { user: currentUser } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState<'All' | 'Admin' | 'Cliente'>('All')
   const [filterStatus, setFilterStatus] = useState<'All' | 'Activo' | 'Inactivo' | 'Pendiente'>('All')
@@ -48,6 +52,12 @@ export const UserManagementPage: React.FC = () => {
     password: '',
     confirmPassword: ''
   })
+
+  const [feedback, setFeedback] = useState<{
+    type: 'success' | 'error' | 'info'
+    title: string
+    message: string
+  } | null>(null)
 
   // Custom Dropdown Component
   const CustomDropdown: React.FC<{
@@ -95,67 +105,47 @@ export const UserManagementPage: React.FC = () => {
     )
   }
 
-  const [users] = useState<User[]>([
-    {
-      id: '1',
-      name: 'María González',
-      email: 'maria.gonzalez@empresa.com',
-      role: 'Cliente',
-      status: 'Activo',
-      lastLogin: '2024-01-15 14:30',
-      createdAt: '2024-01-01',
-      documentsCount: 15
-    },
-    {
-      id: '2',
-      name: 'Carlos Rodríguez',
-      email: 'carlos.rodriguez@empresa.com',
-      role: 'Cliente',
-      status: 'Activo',
-      lastLogin: '2024-01-15 12:15',
-      createdAt: '2024-01-05',
-      documentsCount: 8
-    },
-    {
-      id: '3',
-      name: 'Ana Martínez',
-      email: 'ana.martinez@empresa.com',
-      role: 'Cliente',
-      status: 'Pendiente',
-      lastLogin: '2024-01-14 16:45',
-      createdAt: '2024-01-10',
-      documentsCount: 0
-    },
-    {
-      id: '4',
-      name: 'Luis Hernández',
-      email: 'luis.hernandez@empresa.com',
-      role: 'Cliente',
-      status: 'Inactivo',
-      lastLogin: '2024-01-10 09:20',
-      createdAt: '2023-12-15',
-      documentsCount: 23
-    },
-    {
-      id: '5',
-      name: 'Admin User',
-      email: 'admin@empresa.com',
-      role: 'Admin',
-      status: 'Activo',
-      lastLogin: '2024-01-15 15:00',
-      createdAt: '2023-11-01',
-      documentsCount: 0
-    }
-  ])
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = filterRole === 'All' || user.role === filterRole
-    const matchesStatus = filterStatus === 'All' || user.status === filterStatus
-    
-    return matchesSearch && matchesRole && matchesStatus
-  })
+  useEffect(() => {
+    fetchUsers()
+  }, [currentPage, searchTerm, filterRole, filterStatus])
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const role = filterRole === 'All' ? undefined : filterRole
+      const status = filterStatus === 'All' ? undefined : filterStatus
+      const search = searchTerm || undefined
+
+      const response = await adminApi.getUsers(currentPage, pageSize, search, role, status)
+      
+      // Convert AdminUser to User format
+      const convertedUsers: User[] = response.items.map(adminUser => ({
+        id: adminUser.id,
+        name: adminUser.name,
+        email: adminUser.email,
+        role: adminUser.role as 'Admin' | 'Cliente',
+        status: adminUser.status as 'Activo' | 'Inactivo' | 'Pendiente',
+        lastLogin: adminUser.lastLogin,
+        createdAt: adminUser.lastLogin, // Using lastLogin as createdAt for now
+        documentsCount: adminUser.documentsCount
+      }))
+
+      setUsers(convertedUsers)
+      setTotalUsers(response.totalCount)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredUsers = users
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -186,27 +176,33 @@ export const UserManagementPage: React.FC = () => {
   const handleAddUser = async () => {
     // Validate form data
     if (!newUser.name.trim()) {
-      alert('Por favor ingrese el nombre completo')
+      setFeedback({ type: 'info', title: 'Validación requerida', message: 'Por favor ingrese el nombre completo' })
       return
     }
     
     if (!newUser.email.trim()) {
-      alert('Por favor ingrese el correo electrónico')
+      setFeedback({ type: 'info', title: 'Validación requerida', message: 'Por favor ingrese el correo electrónico' })
+      return
+    }
+    
+    // Require admin email domain
+    if (!newUser.email.trim().toLowerCase().endsWith('@admin.com')) {
+      setFeedback({ type: 'error', title: 'Correo inválido', message: 'El correo del administrador debe terminar con @admin.com' })
       return
     }
     
     if (!newUser.password.trim()) {
-      alert('Por favor ingrese la contraseña')
+      setFeedback({ type: 'info', title: 'Validación requerida', message: 'Por favor ingrese la contraseña' })
       return
     }
     
     if (newUser.password !== newUser.confirmPassword) {
-      alert('Las contraseñas no coinciden')
+      setFeedback({ type: 'error', title: 'Contraseñas no coinciden', message: 'Las contraseñas no coinciden' })
       return
     }
     
     if (newUser.password.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres')
+      setFeedback({ type: 'info', title: 'Contraseña muy corta', message: 'La contraseña debe tener al menos 6 caracteres' })
       return
     }
 
@@ -217,19 +213,15 @@ export const UserManagementPage: React.FC = () => {
       const adminUser = {
         name: newUser.name.trim(),
         email: newUser.email.trim(),
-        password: newUser.password,
-        role: 'Admin' as const,
-        status: 'Activo' as const
+        password: newUser.password
       }
 
-      // TODO: Replace with actual API call
-      console.log('Creating admin user:', adminUser)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Show success message
-      alert(`Admin ${adminUser.name} creado exitosamente`)
+      await adminApi.createAdmin(adminUser)
+      setFeedback({
+        type: 'success',
+        title: 'Administrador creado',
+        message: `Admin ${adminUser.name} creado exitosamente`
+      })
       
       // Close modal and reset form
       setShowAddModal(false)
@@ -240,12 +232,17 @@ export const UserManagementPage: React.FC = () => {
         confirmPassword: ''
       })
       
-      // TODO: Refresh user list or add to local state
-      console.log('Admin user created successfully')
+      // Refresh user list
+      fetchUsers()
       
     } catch (error) {
       console.error('Error creating admin user:', error)
-      alert('Error al crear el admin. Por favor intente nuevamente.')
+      const apiMessage = (error as any)?.response?.data
+      setFeedback({
+        type: 'error',
+        title: 'Error al crear administrador',
+        message: typeof apiMessage === 'string' ? apiMessage : 'Error al crear el admin. Por favor intente nuevamente.'
+      })
     } finally {
       setIsCreatingAdmin(false)
     }
@@ -274,13 +271,38 @@ export const UserManagementPage: React.FC = () => {
     setShowDeleteModal(true)
   }
 
-  const confirmDeleteUser = () => {
+  const confirmDeleteUser = async () => {
     if (selectedUser) {
-      // TODO: Implement actual delete user functionality
-      console.log('Deleting user:', selectedUser)
-      setShowDeleteModal(false)
-      setSelectedUser(null)
-      // You can add actual delete logic here
+      try {
+        // Prevent deleting the currently logged-in user
+        if (currentUser && selectedUser.email.toLowerCase() === currentUser.email.toLowerCase()) {
+          setFeedback({
+            type: 'error',
+            title: 'Operación no permitida',
+            message: 'No puedes eliminar tu propia cuenta.'
+          })
+          return
+        }
+
+        await adminApi.deleteUser(selectedUser.id)
+        setFeedback({
+          type: 'success',
+          title: 'Usuario eliminado',
+          message: `Usuario ${selectedUser.name} eliminado exitosamente`
+        })
+        setShowDeleteModal(false)
+        setSelectedUser(null)
+        // Refresh user list
+        fetchUsers()
+      } catch (error) {
+        console.error('Error deleting user:', error)
+        const apiMessage = (error as any)?.response?.data
+        setFeedback({
+          type: 'error',
+          title: 'Error al eliminar',
+          message: typeof apiMessage === 'string' ? apiMessage : 'Error al eliminar el usuario. Por favor intente nuevamente.'
+        })
+      }
     }
   }
 
@@ -309,13 +331,62 @@ export const UserManagementPage: React.FC = () => {
     XLSX.writeFile(wb, 'usuarios.xlsx')
   }
 
+  if (loading && users.length === 0) {
+    return (
+      <div className="p-4 sm:p-6 lg:px-20 flex items-center justify-center min-h-screen">
+        <div className="text-white text-xl">Cargando usuarios...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:px-20">
+      {/* Feedback Modal */}
+      {feedback && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setFeedback(null)
+            }
+          }}
+        >
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-6 relative">
+            <button
+              onClick={() => setFeedback(null)}
+              className="absolute top-3 right-3 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+            >
+              <XCircle className="h-5 w-5 text-white/70 hover:text-white" />
+            </button>
+            <div className="flex items-start space-x-3">
+              <div className={`p-2 rounded-xl ${
+                feedback.type === 'success' ? 'bg-green-500' : feedback.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+              }`}>
+                {feedback.type === 'success' && <CheckCircle className="h-5 w-5 text-white" />}
+                {feedback.type === 'error' && <AlertCircle className="h-5 w-5 text-white" />}
+                {feedback.type === 'info' && <AlertCircle className="h-5 w-5 text-white" />}
+              </div>
+              <div>
+                <h4 className="text-white text-lg font-semibold mb-1">{feedback.title}</h4>
+                <p className="text-white/80 text-sm">{feedback.message}</p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-5">
+              <button
+                onClick={() => setFeedback(null)}
+                className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 shadow-lg"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white">Gestión de Usuarios</h2>
-          <p className="text-xs sm:text-sm text-blue-200/80">Administrar clientes y permisos</p>
+          <p className="text-xs sm:text-sm text-blue-200/80">Administrar clientes y permisos ({totalUsers} usuarios)</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
           <button 

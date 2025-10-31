@@ -101,3 +101,94 @@ export interface PagedResult<T> {
   hasNextPage: boolean
   hasPreviousPage: boolean
 }
+
+// Admin-specific types
+export interface AdminStats {
+  totalDocuments: number
+  processedDocuments: number
+  pendingDocuments: number
+  errorDocuments: number
+  totalUsers: number
+  activeUsers: number
+  processedToday: number
+}
+
+export interface AdminUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  status: string
+  lastLogin: string
+  documentsCount: number
+}
+
+export interface AdminDocument {
+  id: string
+  fileName: string
+  uploader: string
+  uploadDate: string
+  status: string
+  fileSize: string
+  documentType: string
+  extractedData: {
+    rfc: string
+    periodo: string
+    monto: string
+  }
+}
+
+export interface CreateAdminRequest {
+  name: string
+  email: string
+  password: string
+}
+
+// Reports & Analytics
+export interface ReportsAnalyticsResponse {
+  stats: ReportsStats
+  monthlyTrends: MonthlyTrend[]
+  userActivity: UserActivityPoint[]
+  documentTypes: NameValue[]
+  processingTime: RangeCount[]
+  errorTypes: ErrorType[]
+}
+
+export interface ReportsStats {
+  totalDocuments: number
+  processedToday: number
+  averageProcessingTime: string
+  successRate: number
+  totalUsers: number
+  activeUsers: number
+  growthRate: number
+}
+
+export interface MonthlyTrend {
+  month: string
+  documents: number
+  processed: number
+  errors: number
+}
+
+export interface UserActivityPoint {
+  time: string
+  users: number
+  documents: number
+}
+
+export interface NameValue {
+  name: string
+  value: number
+}
+
+export interface RangeCount {
+  range: string
+  count: number
+}
+
+export interface ErrorType {
+  type: string
+  count: number
+  percentage: number
+}

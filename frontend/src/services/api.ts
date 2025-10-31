@@ -9,7 +9,13 @@ import {
   DocumentUploadResponse,
   TemplateRuleSet,
   CreateTemplateRequest,
-  UpdateTemplateRequest
+  UpdateTemplateRequest,
+  AdminStats,
+  AdminUser,
+  AdminDocument,
+  ReportsAnalyticsResponse,
+  CreateAdminRequest,
+  PagedResult
 } from '../types/api'
 
 const api = axios.create({
@@ -98,4 +104,30 @@ export const templateApi = {
   
   delete: (id: number): Promise<void> =>
     api.delete(`/templates/${id}`).then(() => {}),
+}
+
+export const adminApi = {
+  getStats: (): Promise<AdminStats> =>
+    api.get('/admin/stats').then((res: AxiosResponse<AdminStats>) => res.data),
+  
+  getUsers: (page = 1, pageSize = 10, search?: string, role?: string, status?: string): Promise<PagedResult<AdminUser>> =>
+    api.get('/admin/users', {
+      params: { page, pageSize, search, role, status }
+    }).then((res: AxiosResponse<PagedResult<AdminUser>>) => res.data),
+  
+  getDocuments: (page = 1, pageSize = 10, search?: string, status?: string): Promise<PagedResult<AdminDocument>> =>
+    api.get('/admin/documents', {
+      params: { page, pageSize, search, status }
+    }).then((res: AxiosResponse<PagedResult<AdminDocument>>) => res.data),
+  
+  createAdmin: (request: CreateAdminRequest): Promise<AdminUser> =>
+    api.post('/admin/users', request).then((res: AxiosResponse<AdminUser>) => res.data),
+  
+  deleteUser: (userId: string): Promise<void> =>
+    api.delete(`/admin/users/${userId}`).then(() => {}),
+
+  getAnalytics: (period: '7d' | '30d' | '90d' | '1y' = '30d'): Promise<ReportsAnalyticsResponse> =>
+    api.get('/admin/analytics', {
+      params: { period }
+    }).then((res: AxiosResponse<ReportsAnalyticsResponse>) => res.data),
 }

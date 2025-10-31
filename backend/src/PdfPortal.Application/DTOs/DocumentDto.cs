@@ -247,3 +247,108 @@ public class ClientFormatNormalizationDto
     public string NormalizationTimestamp { get; set; } = string.Empty;
     public List<string> NormalizationSteps { get; set; } = new();
 }
+
+// Admin DTOs
+public class AdminStatsDto
+{
+    public int TotalDocuments { get; set; }
+    public int ProcessedDocuments { get; set; }
+    public int PendingDocuments { get; set; }
+    public int ErrorDocuments { get; set; }
+    public int TotalUsers { get; set; }
+    public int ActiveUsers { get; set; }
+    public int ProcessedToday { get; set; }
+}
+
+public class AdminUserDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string LastLogin { get; set; } = string.Empty;
+    public int DocumentsCount { get; set; }
+}
+
+public class AdminDocumentDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public string Uploader { get; set; } = string.Empty;
+    public string UploadDate { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string FileSize { get; set; } = string.Empty;
+    public string DocumentType { get; set; } = string.Empty;
+    public ExtractedDataDto ExtractedData { get; set; } = new();
+}
+
+public class ExtractedDataDto
+{
+    public string Rfc { get; set; } = string.Empty;
+    public string Periodo { get; set; } = string.Empty;
+    public string Monto { get; set; } = string.Empty;
+}
+
+public class CreateAdminRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
+// Reports & Analytics DTOs
+public class ReportsAnalyticsDto
+{
+    public ReportsStatsDto Stats { get; set; } = new();
+    public List<MonthlyTrendDto> MonthlyTrends { get; set; } = new();
+    public List<UserActivityPointDto> UserActivity { get; set; } = new();
+    public List<NameValueDto> DocumentTypes { get; set; } = new();
+    public List<RangeCountDto> ProcessingTime { get; set; } = new();
+    public List<ErrorTypeDto> ErrorTypes { get; set; } = new();
+}
+
+public class ReportsStatsDto
+{
+    public int TotalDocuments { get; set; }
+    public int ProcessedToday { get; set; }
+    public string AverageProcessingTime { get; set; } = "-";
+    public double SuccessRate { get; set; }
+    public int TotalUsers { get; set; }
+    public int ActiveUsers { get; set; }
+    public double GrowthRate { get; set; }
+}
+
+public class MonthlyTrendDto
+{
+    public string Month { get; set; } = string.Empty; // e.g., "Ene"
+    public int Documents { get; set; }
+    public int Processed { get; set; }
+    public int Errors { get; set; }
+}
+
+public class UserActivityPointDto
+{
+    public string Time { get; set; } = string.Empty; // e.g., "00:00"
+    public int Users { get; set; }
+    public int Documents { get; set; }
+}
+
+public class NameValueDto
+{
+    public string Name { get; set; } = string.Empty;
+    public int Value { get; set; }
+}
+
+public class RangeCountDto
+{
+    public string Range { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
+
+public class ErrorTypeDto
+{
+    public string Type { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public int Percentage { get; set; }
+}
