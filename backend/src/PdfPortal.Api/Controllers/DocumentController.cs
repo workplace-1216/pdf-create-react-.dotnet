@@ -6,6 +6,9 @@ using PdfPortal.Application.Interfaces;
 using PdfPortal.Application.Models;
 using PdfPortal.Application.Services;
 using PdfPortal.Domain.Entities;
+using System.IO.Compression;
+using System.Net.Mail;
+using System.Text.Json;
 
 namespace PdfPortal.Api.Controllers;
 
@@ -19,19 +22,22 @@ public class DocumentController : ControllerBase
     private readonly ITemplateProcessorService _templateProcessorService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TemplateRuleParser _templateRuleParser;
+    private readonly IConfiguration _configuration;
 
     public DocumentController(
         DocumentService documentService,
         IPdfStorageService pdfStorageService,
         ITemplateProcessorService templateProcessorService,
         IUnitOfWork unitOfWork,
-        TemplateRuleParser templateRuleParser)
+        TemplateRuleParser templateRuleParser,
+        IConfiguration configuration)
     {
         _documentService = documentService;
         _pdfStorageService = pdfStorageService;
         _templateProcessorService = templateProcessorService;
         _unitOfWork = unitOfWork;
         _templateRuleParser = templateRuleParser;
+        _configuration = configuration;
     }
 
     [HttpPost("upload")]
@@ -275,7 +281,7 @@ public class DocumentController : ControllerBase
     [Authorize] // Temporarily allow all authenticated users for debugging
     public async Task<ActionResult<PagedResult<ClientReadyDocumentDto>>> GetClientReadyDocuments(
         [FromQuery] int page = 1, 
-        [FromQuery] int pageSize = 5)
+        [FromQuery] int pageSize = 10)
     {
         try
         {
@@ -289,7 +295,7 @@ public class DocumentController : ControllerBase
             
             // Validate pagination parameters
             if (page < 1) page = 1;
-            if (pageSize < 1 || pageSize > 50) pageSize = 5;
+            if (pageSize < 1 || pageSize > 50) pageSize = 10;
             
             // Get all approved processed documents with pagination
             var totalCount = await _unitOfWork.DocumentProcessed.CountAsync(d => 
@@ -630,5 +636,126 @@ public class DocumentController : ControllerBase
         {
             return StatusCode(500, $"Error downloading document data: {ex.Message}");
         }
+    }
+
+    [HttpPost("processed/download-batch")]
+    [Authorize(Roles = "Client,Admin")]
+    public async Task<IActionResult> DownloadBatch([FromBody] BatchDownloadRequest request)
+    {
+        if (request?.DocumentIds == null || request.DocumentIds.Count == 0)
+        {
+            return BadRequest("No document IDs provided");
+        }
+
+        if (request.DocumentIds.Count == 1)
+        {
+            var singleId = request.DocumentIds[0];
+            var doc = await _unitOfWork.DocumentProcessed.GetByIdAsync(singleId);
+            if (doc == null) return NotFound($"Document {singleId} not found");
+            var bytes = await _pdfStorageService.GetProcessedPdfAsync(doc.FilePathFinalPdf);
+            var name = $"document_{singleId}.pdf";
+            return File(bytes, "application/pdf", name);
+        }
+
+        await using var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var id in request.DocumentIds)
+            {
+                var doc = await _unitOfWork.DocumentProcessed.GetByIdAsync(id);
+                if (doc == null) continue;
+                var bytes = await _pdfStorageService.GetProcessedPdfAsync(doc.FilePathFinalPdf);
+                var entryName = $"document_{id}.pdf";
+                var entry = zip.CreateEntry(entryName, CompressionLevel.Fastest);
+                await using var entryStream = entry.Open();
+                await entryStream.WriteAsync(bytes, 0, bytes.Length);
+            }
+        }
+
+        ms.Position = 0;
+        var zipName = $"docs_{DateTime.UtcNow:yyyyMMdd}.zip";
+        return File(ms.ToArray(), "application/zip", zipName);
+    }
+
+    [HttpPost("processed/send-email")]
+    [Authorize(Roles = "Client,Admin")]
+    public async Task<IActionResult> SendByEmail([FromBody] SendDocumentsRequest request)
+    {
+        if (request?.DocumentIds == null || request.DocumentIds.Count == 0)
+        {
+            return BadRequest("No document IDs provided");
+        }
+
+        var toEmail = request.ToEmail;
+        if (string.IsNullOrWhiteSpace(toEmail))
+        {
+            // fallback to current user's email if not provided
+            try
+            {
+                toEmail = CurrentUserHelper.GetCurrentUserEmail(HttpContext);
+            }
+            catch { return BadRequest("Destination email is required"); }
+        }
+
+        // Build subject prefix: first 4 letters of RFC/CIF/NIF, uppercase
+        string prefix = "FILE";
+        try
+        {
+            var firstDoc = await _unitOfWork.DocumentProcessed.GetByIdAsync(request.DocumentIds.First());
+            if (firstDoc != null && !string.IsNullOrEmpty(firstDoc.ExtractedJsonData))
+            {
+                var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(firstDoc.ExtractedJsonData);
+                var rfc = dict != null && dict.TryGetValue("RFC", out var val) ? val.GetString() : null;
+                if (!string.IsNullOrWhiteSpace(rfc))
+                {
+                    prefix = new string(rfc!.Take(4).ToArray()).ToUpperInvariant();
+                }
+            }
+        }
+        catch { /* ignore */ }
+
+        // Sequence number based on current selection order
+        var sequence = 1;
+        var subject = $"{prefix}-{sequence:0000} Documentos";
+
+        // Try SMTP send if configured
+        var host = _configuration["Smtp:Host"];
+        var from = _configuration["Smtp:From"] ?? "no-reply@localhost";
+        var portStr = _configuration["Smtp:Port"];
+        int.TryParse(portStr, out var port);
+        var user = _configuration["Smtp:Username"];
+        var pass = _configuration["Smtp:Password"];
+
+        if (!string.IsNullOrWhiteSpace(host) && port > 0)
+        {
+            using var client = new SmtpClient(host, port)
+            {
+                EnableSsl = true,
+                Credentials = !string.IsNullOrWhiteSpace(user) ? new System.Net.NetworkCredential(user, pass) : null
+            };
+            using var message = new MailMessage(from, toEmail!)
+            {
+                Subject = subject,
+                Body = "Documentos procesados adjuntos.",
+                IsBodyHtml = false
+            };
+
+            // Attach PDFs (limit total size)
+            foreach (var id in request.DocumentIds.Take(40))
+            {
+                var doc = await _unitOfWork.DocumentProcessed.GetByIdAsync(id);
+                if (doc == null) continue;
+                var bytes = await _pdfStorageService.GetProcessedPdfAsync(doc.FilePathFinalPdf);
+                var attachment = new Attachment(new MemoryStream(bytes), $"{prefix}-{sequence:0000}_document_{id}.pdf", "application/pdf");
+                message.Attachments.Add(attachment);
+                sequence++;
+            }
+
+            await client.SendMailAsync(message);
+            return Ok(new { status = "sent", to = toEmail, subject });
+        }
+
+        // If SMTP not configured, acknowledge request
+        return Ok(new { status = "queued", to = toEmail, subject });
     }
 }

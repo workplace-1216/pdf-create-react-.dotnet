@@ -112,11 +112,8 @@ export const LoginPage: React.FC = () => {
       <div className="relative z-10 max-w-md w-full space-y-8">
         {/* Modern Header */}
         <div className="text-center">
-          <div className="relative mx-auto w-20 h-20 mb-6 group">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
-            <div className="relative w-full h-full bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-3xl shadow-2xl flex items-center justify-center">
-              <Shield className="h-10 w-10 text-white" />
-            </div>
+          <div className="relative mx-auto mb-6 group flex items-center justify-center">
+            <img src="/logo.png" alt="CAAST" className="h-12 sm:h-20" />
           </div>
           
           <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent mb-2">

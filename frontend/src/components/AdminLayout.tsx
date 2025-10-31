@@ -50,11 +50,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <div className="p-4 border-b border-white/20">
           <div className="flex items-center space-x-3">
             <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
-              <div className="relative p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-xl shadow-2xl">
-                <Shield className="h-5 w-5 text-white" />
+              <div className="relative p-2 rounded-xl shadow-2xl">
+                <img src="/logo.png" alt="CAAST" className="h-12 sm:h-12" />
               </div>
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
             </div>
             {sidebarOpen && (
               <div>
@@ -76,23 +74,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <Link
                 key={item.id}
                 to={item.path}
-                className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${
-                  isActive
+                className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive
                     ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30'
                     : 'hover:bg-white/10 hover:border-white/20'
-                }`}
+                  }`}
               >
-                <div className={`p-2 rounded-lg ${
-                  isActive
+                <div className={`p-2 rounded-lg ${isActive
                     ? 'bg-gradient-to-r from-blue-500 to-purple-500'
                     : 'bg-white/10 group-hover:bg-white/20'
-                }`}>
+                  }`}>
                   <Icon className="h-4 w-4 text-white" />
                 </div>
                 {sidebarOpen && (
-                  <span className={`text-sm font-medium ${
-                    isActive ? 'text-white' : 'text-white/80 group-hover:text-white'
-                  }`}>
+                  <span className={`text-sm font-medium ${isActive ? 'text-white' : 'text-white/80 group-hover:text-white'
+                    }`}>
                     {item.label}
                   </span>
                 )}

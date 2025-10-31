@@ -87,6 +87,14 @@ export const documentApi = {
     api.get(`/documents/processed/${documentId}/file`, {
       responseType: 'blob'
     }).then((res: AxiosResponse<Blob>) => res.data),
+
+  downloadBatch: (documentIds: number[]): Promise<Blob> =>
+    api.post('/documents/processed/download-batch', { documentIds }, { responseType: 'blob' })
+       .then((res: AxiosResponse<Blob>) => res.data),
+
+  sendByEmail: (documentIds: number[], toEmail?: string): Promise<{ status: string; to: string; subject: string }> =>
+    api.post('/documents/processed/send-email', { documentIds, toEmail })
+       .then((res: AxiosResponse<{ status: string; to: string; subject: string }>) => res.data),
 }
 
 export const templateApi = {

@@ -297,6 +297,17 @@ public class CreateAdminRequest
     public string Password { get; set; } = string.Empty;
 }
 
+public class SendDocumentsRequest
+{
+    public List<int> DocumentIds { get; set; } = new();
+    public string? ToEmail { get; set; }
+}
+
+public class BatchDownloadRequest
+{
+    public List<int> DocumentIds { get; set; } = new();
+}
+
 // Reports & Analytics DTOs
 public class ReportsAnalyticsDto
 {

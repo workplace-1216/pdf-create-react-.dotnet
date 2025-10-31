@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   FileText,
   Download,
-  Eye,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -16,7 +15,8 @@ import {
   Layers,
   Database,
   CheckSquare,
-  LogOut
+  LogOut,
+  Send
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { documentApi } from '../services/api'
@@ -30,6 +30,15 @@ interface ReadyDocument {
   proveedorEmail: string
   complianceStatus: string  // Backend returns "ListoParaEnviar"
   readyAtUtc: string
+  uploadedAt?: string // Add uploaded timestamp if available
+}
+
+interface DocumentFolder {
+  id: string
+  folderName: string // Date and time string
+  uploadDateTime: Date
+  documents: ReadyDocument[]
+  documentCount: number
 }
 
 interface DocumentDetail {
@@ -43,6 +52,96 @@ interface DocumentDetail {
   readyAtUtc: string
 }
 
+
+// Modern Folder Component with SVG
+const FolderCard: React.FC<{
+  folder: DocumentFolder
+  onFolderClick: (folder: DocumentFolder) => void
+  onSelect: (folderId: string, selected: boolean) => void
+  isSelected: boolean
+}> = ({ folder, onFolderClick, onSelect, isSelected }) => {
+  return (
+    <div
+      className={`relative bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 hover:bg-white/15 hover:scale-[102%] transition-all duration-300 cursor-pointer group ${
+        isSelected ? 'ring-2 ring-blue-400' : ''
+      }`}
+      onClick={() => onFolderClick(folder)}
+    >
+      {/* Checkbox */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelect(folder.id, !isSelected)
+        }}
+        className="absolute top-3 right-3 z-10"
+      >
+        <CheckSquare
+          className={`h-5 w-5 transition-colors ${
+            isSelected ? 'text-blue-400 fill-current' : 'text-white/60'
+          }`}
+        />
+      </button>
+
+      {/* Folder SVG Icon */}
+      <div className="relative w-24 h-24 mx-auto mb-4">
+        <svg
+          viewBox="0 0 120 100"
+          className="w-full h-full"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Folder base */}
+          <path
+            d="M10 20 L10 85 Q10 90 15 90 L105 90 Q110 90 110 85 L110 35 L55 35 L45 20 Z"
+            fill={`url(#folderGradient-${folder.id})`}
+            className="drop-shadow-lg"
+          />
+          {/* Folder tab */}
+          <path
+            d="M10 20 Q10 15 15 15 L50 15 L55 25 L45 20 Z"
+            fill={`url(#folderTabGradient-${folder.id})`}
+            className="drop-shadow-md"
+          />
+          {/* Document count circle */}
+          <circle cx="60" cy="55" r="18" fill="rgba(255,255,255,0.95)" className="drop-shadow-xl" />
+          {/* Document count text */}
+          <text
+            x="60"
+            y="62"
+            textAnchor="middle"
+            className="text-xl font-bold fill-slate-800"
+            dominantBaseline="middle"
+          >
+            {folder.documentCount}
+          </text>
+          {/* Gradients */}
+          <defs>
+            <linearGradient id={`folderGradient-${folder.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.9" />
+            </linearGradient>
+            <linearGradient id={`folderTabGradient-${folder.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.95" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      {/* Folder Name */}
+      <div className="text-center">
+        <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2">
+          {folder.folderName}
+        </h3>
+        <p className="text-xs text-blue-200/70">
+          {folder.documentCount} {folder.documentCount === 1 ? 'documento' : 'documentos'}
+        </p>
+      </div>
+
+      {/* Hover effect */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-2xl transition-opacity duration-300"></div>
+    </div>
+  )
+}
 
 // Page-based Compliance Verification Drawer
 const TransformationDrawer: React.FC<{
@@ -66,22 +165,43 @@ const TransformationDrawer: React.FC<{
     }
   }, [isOpen])
 
+  // Prevent body scroll when modal is open
+  React.useEffect(() => {
+    if (isOpen) {
+      // Save the current scroll position
+      const scrollY = window.scrollY
+      const body = window.document.body
+      // Apply styles to prevent scrolling
+      body.style.position = 'fixed'
+      body.style.top = `-${scrollY}px`
+      body.style.width = '100%'
+      body.style.overflow = 'hidden'
+      
+      return () => {
+        // Restore scroll position and remove styles
+        body.style.position = ''
+        body.style.top = ''
+        body.style.width = ''
+        body.style.overflow = ''
+        window.scrollTo(0, scrollY)
+      }
+    }
+  }, [isOpen])
+
   if (!isVisible) return null
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Animated Backdrop */}
       <div
-        className={`absolute inset-0 bg-gradient-to-br from-black/60 via-slate-900/50 to-black/60 backdrop-blur-sm transition-all duration-300 ${
-          isOpen ? 'opacity-100' : 'opacity-0'
-        }`}
+        className={`absolute inset-0 bg-gradient-to-br from-black/60 via-slate-900/50 to-black/60 backdrop-blur-sm transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'
+          }`}
         onClick={onClose}
       />
 
       {/* Compact Drawer */}
-      <div className={`fixed top-0 right-0 h-full w-full max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20 flex flex-col transition-all duration-300 ease-in-out ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}>
+      <div className={`fixed top-0 right-0 h-full w-full max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20 flex flex-col transition-all duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}>
         {/* Header with Gradient and Navigation */}
         <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-4 sm:p-6">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90"></div>
@@ -108,7 +228,7 @@ const TransformationDrawer: React.FC<{
                 <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </button>
             </div>
-            
+
             {/* Bottom Row - Navigation */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -119,11 +239,10 @@ const TransformationDrawer: React.FC<{
                   {[0, 1, 2, 3].map((page) => (
                     <div
                       key={page}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        currentPage === page
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${currentPage === page
                           ? 'bg-white'
                           : 'bg-white/40'
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>
@@ -490,6 +609,23 @@ const TransformationDrawer: React.FC<{
                 </div>
               </button>
               <button
+                onClick={async () => {
+                  if (document) {
+                    try {
+                      await documentApi.sendByEmail([Number(document.id)])
+                    } catch (e) {
+                      console.error('Error enviando por correo:', e)
+                    }
+                  }
+                }}
+                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 border border-transparent rounded-xl hover:from-amber-700 hover:via-orange-700 hover:to-rose-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-amber-500/25"
+              >
+                <div className="flex items-center space-x-2">
+                  <Send className="h-4 w-4" />
+                  <span className="hidden sm:inline">Enviar</span>
+                </div>
+              </button>
+              <button
                 onClick={() => {
                   if (document) {
                     const data = {
@@ -529,18 +665,27 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   const [readyDocs, setReadyDocs] = useState<ReadyDocument[]>([])
   const [pagination, setPagination] = useState({
     page: 1,
-    pageSize: 5,
+    pageSize: 10,
     totalCount: 0,
     totalPages: 0,
     hasNextPage: false,
     hasPreviousPage: false
   })
+  const [folders, setFolders] = useState<DocumentFolder[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
   const [selectedDocDetail, setSelectedDocDetail] = useState<DocumentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([])
+  const [sending, setSending] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [feedbackModalContent, setFeedbackModalContent] = useState<{
+    type: 'success' | 'error' | 'info'
+    title: string
+    message: string
+  } | null>(null)
 
   // Helper function to clean up regex patterns and show proper extracted values
   const getDisplayValue = (value: string, type: string) => {
@@ -591,7 +736,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     try {
       const token = localStorage.getItem('token')
       if (!token) {
-        alert('No hay token de autenticación')
+        showFeedback('error', 'Error de Autenticación', 'No hay token de autenticación')
         return
       }
 
@@ -605,7 +750,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('Download error:', errorText)
-        alert(`Error al descargar: ${response.status} - ${errorText}`)
+        showFeedback('error', 'Error de Descarga', `Error al descargar: ${response.status} - ${errorText}`)
         return
       }
 
@@ -628,17 +773,54 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
     } catch (error) {
       console.error('Download failed:', error)
-      alert('Error al descargar el documento')
+      showFeedback('error', 'Error de Descarga', 'Error al descargar el documento')
     }
   }
 
   // Upload functionality
   const [uploading, setUploading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [dragActive, setDragActive] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [uploadedFileName, setUploadedFileName] = useState<string>('')
+  const [uploadedFileNames, setUploadedFileNames] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Group documents into folders by upload time
+  const groupDocumentsIntoFolders = (documents: ReadyDocument[]): DocumentFolder[] => {
+    if (!documents || documents.length === 0) return []
+
+    // Group documents by minute (documents uploaded within the same minute are in the same folder)
+    const folderMap = new Map<string, ReadyDocument[]>()
+    
+    documents.forEach(doc => {
+      const docDate = new Date(doc.readyAtUtc)
+      // Round to nearest minute for grouping
+      const minuteKey = `${docDate.getFullYear()}-${String(docDate.getMonth() + 1).padStart(2, '0')}-${String(docDate.getDate()).padStart(2, '0')} ${String(docDate.getHours()).padStart(2, '0')}:${String(docDate.getMinutes()).padStart(2, '0')}`
+      
+      if (!folderMap.has(minuteKey)) {
+        folderMap.set(minuteKey, [])
+      }
+      folderMap.get(minuteKey)!.push(doc)
+    })
+
+    // Convert map to folders array
+    const folders: DocumentFolder[] = Array.from(folderMap.entries()).map(([folderName, docs], index) => {
+      const uploadDateTime = new Date(docs[0].readyAtUtc)
+      // Format folder name: "DD/MM/YYYY HH:MM"
+      const formattedName = `${String(uploadDateTime.getDate()).padStart(2, '0')}/${String(uploadDateTime.getMonth() + 1).padStart(2, '0')}/${uploadDateTime.getFullYear()} ${String(uploadDateTime.getHours()).padStart(2, '0')}:${String(uploadDateTime.getMinutes()).padStart(2, '0')}`
+      
+      return {
+        id: `folder-${index}-${folderName}`,
+        folderName: formattedName,
+        uploadDateTime,
+        documents: docs.sort((a, b) => new Date(b.readyAtUtc).getTime() - new Date(a.readyAtUtc).getTime()),
+        documentCount: docs.length
+      }
+    })
+
+    // Sort folders by upload date (newest first)
+    return folders.sort((a, b) => b.uploadDateTime.getTime() - a.uploadDateTime.getTime())
+  }
 
   // Fetch ready documents
   const fetchReadyDocuments = async (page: number = pagination.page) => {
@@ -646,7 +828,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       setLoading(true)
       console.log('Fetching ready documents from:', 'http://localhost:5000/api/documents/client/documents/ready')
       console.log('Pagination - Page:', page, 'PageSize:', pagination.pageSize)
-      
+
       // Debug: Check token and user info
       const token = localStorage.getItem('token')
       console.log('Token exists:', !!token)
@@ -716,10 +898,16 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       }
 
       // Backend returns paginated result with items array
-      setReadyDocs(Array.isArray(data.items) ? data.items : [])
+      const documents = Array.isArray(data.items) ? data.items : []
+      setReadyDocs(documents)
+      
+      // Group documents into folders by upload time (group by minute)
+      const groupedFolders = groupDocumentsIntoFolders(documents)
+      setFolders(groupedFolders)
+      
       setPagination({
         page: data.page || 1,
-        pageSize: data.pageSize || 5,
+        pageSize: data.pageSize || 10,
         totalCount: data.totalCount || 0,
         totalPages: data.totalPages || 0,
         hasNextPage: data.hasNextPage || false,
@@ -774,9 +962,15 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     fetchReadyDocuments()
   }, [])
 
-  const handleRowClick = (docId: string) => {
-    setSelectedDocId(docId)
-    setDrawerOpen(true)
+  // Clear selection when page changes
+  useEffect(() => {
+    setSelectedFolderIds([])
+  }, [pagination.page])
+
+  // Helper function to show feedback modal
+  const showFeedback = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    setFeedbackModalContent({ type, title, message })
+    setShowFeedbackModal(true)
   }
 
   const handleCloseDrawer = () => {
@@ -785,13 +979,71 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     setSelectedDocDetail(null)
   }
 
+  // Handle folder selection
+  const handleToggleFolderSelect = (folderId: string) => {
+    setSelectedFolderIds(prev => 
+      prev.includes(folderId) 
+        ? prev.filter(id => id !== folderId)
+        : [...prev, folderId]
+    )
+  }
+
+  const handleSelectAllFolders = () => {
+    if (selectedFolderIds.length === folders.length) {
+      setSelectedFolderIds([])
+    } else {
+      setSelectedFolderIds(folders.map(folder => folder.id))
+    }
+  }
+
+  const handleFolderClick = (folder: DocumentFolder) => {
+    // Open first document from folder, or show folder details
+    if (folder.documents.length > 0) {
+      setSelectedDocId(folder.documents[0].id)
+      setDrawerOpen(true)
+    }
+  }
+
+  const handleSendSelectedFolders = async () => {
+    if (selectedFolderIds.length === 0) return
+    
+    setSending(true)
+    try {
+      // Get all document IDs from selected folders
+      const documentIds: number[] = []
+      selectedFolderIds.forEach(folderId => {
+        const folder = folders.find(f => f.id === folderId)
+        if (folder) {
+          folder.documents.forEach(doc => {
+            documentIds.push(Number(doc.id))
+          })
+        }
+      })
+      
+      if (documentIds.length === 0) return
+      
+      await documentApi.sendByEmail(documentIds)
+      const totalDocs = documentIds.length
+      showFeedback('success', 'Documentos Enviados', `Se enviaron ${totalDocs} documento(s) de ${selectedFolderIds.length} carpeta(s) exitosamente`)
+      setSelectedFolderIds([]) // Clear selection after sending
+    } catch (error) {
+      console.error('Error sending documents:', error)
+      showFeedback('error', 'Error de Envío', 'Error al enviar los documentos. Por favor intente nuevamente.')
+    } finally {
+      setSending(false)
+    }
+  }
+
   // Upload handlers
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file && file.type === 'application/pdf') {
-      setSelectedFile(file)
-    } else {
-      alert('Por favor selecciona un archivo PDF')
+    const files = event.target.files
+    if (files && files.length > 0) {
+      const pdfFiles = Array.from(files).filter(file => file.type === 'application/pdf')
+      if (pdfFiles.length > 0) {
+        setSelectedFiles(prev => [...prev, ...pdfFiles])
+      } else {
+        showFeedback('error', 'Archivo Inválido', 'Por favor selecciona archivos PDF válidos')
+      }
     }
   }
 
@@ -810,32 +1062,41 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     e.stopPropagation()
     setDragActive(false)
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0]
-      if (file.type === 'application/pdf') {
-        setSelectedFile(file)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const pdfFiles = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf')
+      if (pdfFiles.length > 0) {
+        setSelectedFiles(prev => [...prev, ...pdfFiles])
       } else {
-        alert('Por favor selecciona un archivo PDF')
+        showFeedback('error', 'Archivo Inválido', 'Por favor selecciona archivos PDF válidos')
       }
     }
   }
 
   const handleUpload = async () => {
-    if (!selectedFile) return
+    if (!selectedFiles || selectedFiles.length === 0) return
 
     setUploading(true)
+    const uploaded: string[] = []
+    const failed: string[] = []
+
     try {
-      console.log('Starting upload...', {
-        fileName: selectedFile.name,
-        size: selectedFile.size,
-        type: selectedFile.type,
-        templateId: 1 // Using template ID 1 as default
-      })
+      console.log(`Starting upload of ${selectedFiles.length} files...`)
 
-      const uploadResult = await documentApi.upload(selectedFile, 1)
-      console.log('Upload successful:', uploadResult)
+      // Upload files sequentially
+      for (const file of selectedFiles) {
+        try {
+          console.log('Uploading file:', file.name)
+          const uploadResult = await documentApi.upload(file, 1)
+          console.log('Upload successful:', uploadResult)
+          uploaded.push(file.name)
+        } catch (error) {
+          console.error(`Upload failed for ${file.name}:`, error)
+          failed.push(file.name)
+        }
+      }
 
-      setSelectedFile(null)
+      // Clear selected files
+      setSelectedFiles([])
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -847,17 +1108,20 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
       console.log('Document list refreshed, current count:', readyDocs.length)
 
-      // Show success message with document count
-      setUploadedFileName(selectedFile.name)
-      setShowSuccessModal(true)
+      // Show success message with uploaded file names
+      if (uploaded.length > 0) {
+        setUploadedFileNames(uploaded)
+        setShowSuccessModal(true)
+      }
+
+      // Show error for failed uploads if any
+      if (failed.length > 0) {
+        showFeedback('error', 'Error de Subida', `Error al subir ${failed.length} archivo(s): ${failed.join(', ')}`)
+      }
     } catch (error) {
-      console.error('Upload failed:', error)
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        response: error instanceof Error && 'response' in error ? (error as any).response : null
-      })
+      console.error('Upload process failed:', error)
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-      alert(`Error al subir el documento: ${errorMessage}`)
+      showFeedback('error', 'Error de Subida', `Error al subir los documentos: ${errorMessage}`)
     } finally {
       setUploading(false)
     }
@@ -882,9 +1146,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-auto flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative flex flex-col">
       {/* Advanced Animated Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         {/* Floating Orbs */}
         <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-to-br from-indigo-500/30 to-cyan-500/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
@@ -898,16 +1162,15 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-pulse delay-1000"></div>
       </div>
 
-        {/* Modern Header */}
-        <div className="sticky top-0 z-50 bg-gradient-to-r from-white/5 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/20">
+      {/* Modern Header */}
+      <div className="sticky top-0 z-50 bg-gradient-to-r from-white/5 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/20 relative z-10">
         <div className="w-full flex justify-center sm:px-6 lg:px-8 py-2 sm:py-3">
           <div className="flex items-center justify-between w-[90%] sm:w-[70%]">
             {/* Left Side - Logo & Title */}
             <div className="flex items-center space-x-3">
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
-                <div className="relative p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-xl shadow-2xl">
-                  <Shield className="h-5 w-5 text-white" />
+                <div className="relative p-2 rounded-xl shadow-2xl">
+                  <img src="/logo.png" alt="CAAST" className="h-8 sm:h-10" />
                 </div>
               </div>
               <div>
@@ -933,7 +1196,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative w-full py-6 sm:py-10 flex-1 flex flex-row lg:flex-row gap-3 sm:gap-6 justify-center">
+      <div className="relative z-10 w-full py-6 sm:py-10 flex-1 flex flex-row lg:flex-row gap-3 sm:gap-6 justify-center">
         <div className='flex w-[90%] sm:w-[70%]'>
           {/* Left Column - Upload Section + Stats */}
           <div className="w-full gap-3 sm:gap-4">
@@ -971,6 +1234,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       ref={fileInputRef}
                       type="file"
                       accept=".pdf"
+                      multiple
                       onChange={handleFileSelect}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
@@ -983,14 +1247,35 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-sm sm:text-base font-semibold text-white mb-1">
-                          {selectedFile ? selectedFile.name : 'Arrastra PDF aquí'}
+                          {selectedFiles.length > 0 
+                            ? `${selectedFiles.length} archivo(s) seleccionado(s)`
+                            : 'Arrastra PDF aquí'}
                         </p>
-                        <p className="text-xs text-blue-200/70">o haz clic para seleccionar</p>
+                        <p className="text-xs text-blue-200/70">
+                          {selectedFiles.length > 0 
+                            ? 'Selecciona más archivos o sube'
+                            : 'o haz clic para seleccionar múltiples PDF'}
+                        </p>
                       </div>
-                      {selectedFile && (
-                        <div className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-full">
-                          <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                          <p className="text-xs text-green-300 font-medium">✓ Archivo seleccionado</p>
+                      {selectedFiles.length > 0 && (
+                        <div className="w-full max-h-32 overflow-y-auto space-y-2 mt-2">
+                          {selectedFiles.map((file, index) => (
+                            <div key={index} className="inline-flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-full w-full">
+                              <div className="flex items-center flex-1 min-w-0">
+                                <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse flex-shrink-0"></div>
+                                <p className="text-xs text-green-300 font-medium truncate">{file.name}</p>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+                                }}
+                                className="ml-2 text-red-400 hover:text-red-300 transition-colors flex-shrink-0"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -999,8 +1284,8 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   {/* Modern Upload Button */}
                   <button
                     onClick={handleUpload}
-                    disabled={!selectedFile || uploading}
-                    className={`relative px-6 mt-5 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold text-sm sm:text-base transition-all duration-500 w-full sm:w-auto overflow-auto group/btn ${selectedFile && !uploading
+                    disabled={selectedFiles.length === 0 || uploading}
+                    className={`relative px-6 mt-5 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold text-sm sm:text-base transition-all duration-500 w-full sm:w-auto overflow-auto group/btn ${selectedFiles.length > 0 && !uploading
                       ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 shadow-2xl hover:shadow-blue-500/25 hover:scale-105'
                       : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
                       }`}
@@ -1011,17 +1296,22 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                           <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white mr-3"></div>
                           <div className="absolute inset-0 animate-ping rounded-full h-5 w-5 border border-white/20"></div>
                         </div>
-                        <span className="font-semibold">Procesando...</span>
+                        <span className="font-semibold">Procesando {selectedFiles.length} archivo(s)...</span>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center">
                         <Zap className="h-5 w-5 mr-2 group-hover/btn:animate-pulse" />
-                        <span className="font-semibold">Subir Documento</span>
+                        <span className="font-semibold">
+                          {selectedFiles.length > 0 
+                            ? `Subir ${selectedFiles.length} Documento(s)`
+                            : 'Subir Documento(s)'
+                          }
+                        </span>
                       </div>
                     )}
 
                     {/* Button Shine Effect */}
-                    {selectedFile && !uploading && (
+                    {selectedFiles.length > 0 && !uploading && (
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000"></div>
                     )}
                   </button>
@@ -1139,9 +1429,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                         <h2 className="text-base sm:text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                           Documentos Finalizados ({pagination.totalCount})
-                         </h2>
+                        <h2 className="text-base sm:text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                          Documentos Finalizados ({folders.length})
+                        </h2>
                         <p className="text-xs text-blue-200/70">Verificación de cumplimiento</p>
                       </div>
                     </div>
@@ -1187,11 +1477,42 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                  {/* Bulk Actions */}
+                  {selectedFolderIds.length > 0 && (
+                    <div className="relative z-10 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3 backdrop-blur-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300 mr-2" />
+                          <p className="text-xs sm:text-sm text-blue-200 font-medium">
+                            {selectedFolderIds.length} carpeta(s) seleccionada(s)
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleSendSelectedFolders}
+                          disabled={sending}
+                          className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 border border-transparent rounded-lg hover:from-amber-700 hover:via-orange-700 hover:to-rose-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-amber-500/25 hover:scale-105 transition-all duration-300"
+                        >
+                          {sending ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white"></div>
+                              <span>Enviando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-3 w-3" />
+                              <span>Enviar Seleccionados</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Modern Document Table */}
-                <div className="relative z-10 flex-1 overflow-auto h-full">
-                  {readyDocs.length === 0 ? (
+                {/* Modern Folder Grid */}
+                <div className="relative z-10 w-full">
+                  {folders.length === 0 ? (
                     <div className="text-center py-8 sm:py-12">
                       <div className="relative mx-auto w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6">
                         <div className="absolute inset-0 bg-gradient-to-r from-gray-500/30 to-gray-600/30 rounded-full blur-lg"></div>
@@ -1205,131 +1526,39 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-white/10">
-                        <thead className="bg-gradient-to-r from-white/10 to-blue-500/10 backdrop-blur-sm">
-                          <tr>
-                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
-                              Fecha
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
-                              RFC
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
-                              Período
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
-                              Monto
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
-                              Estado
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-blue-200/80 uppercase tracking-wider">
-                              Acción
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-transparent divide-y divide-white/10">
-                          {readyDocs.map((doc, index) => (
-                            <tr
-                              key={doc.id}
-                              onClick={() => handleRowClick(doc.id)}
-                              className="hover:bg-white/5 cursor-pointer transition-all duration-300 group/row"
-                              style={{ animationDelay: `${index * 100}ms` }}
-                            >
-                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base text-white font-medium">
-                                {new Date(doc.readyAtUtc).toLocaleDateString('es-MX')}
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base font-mono text-white">
-                                <div className="flex items-center">
-                                  {getDisplayValue(doc.rfcEmisor, "RFC") === "Re-procesar" ? (
-                                    <>
-                                      <div className="h-4 w-4 bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-full mr-2 sm:mr-3 flex items-center justify-center">
-                                        <span className="text-orange-300 text-xs font-bold">!</span>
-                                      </div>
-                                      <span className="text-orange-300 font-medium text-sm">Re-procesar</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="relative mr-2 sm:mr-3">
-                                        <CheckCircle className="h-4 w-4 text-blue-400" />
-                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                                      </div>
-                                      <span className="text-sm text-white font-mono">{getDisplayValue(doc.rfcEmisor, "RFC")}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base text-white">
-                                <div className="flex items-center">
-                                  {getDisplayValue(doc.periodo, "PERIODO") === "Re-procesar" ? (
-                                    <>
-                                      <div className="h-4 w-4 bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-full mr-2 sm:mr-3 flex items-center justify-center">
-                                        <span className="text-orange-300 text-xs font-bold">!</span>
-                                      </div>
-                                      <span className="text-orange-300 font-medium text-sm">Re-procesar</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="relative mr-2 sm:mr-3">
-                                        <CheckCircle className="h-4 w-4 text-green-400" />
-                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                      </div>
-                                      <span className="text-sm text-white">{getDisplayValue(doc.periodo, "PERIODO")}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base font-bold text-white">
-                                <div className="flex items-center">
-                                  {getDisplayValue(doc.montoTotalMxn, "MONTO") === "Re-procesar" ? (
-                                    <>
-                                      <div className="h-4 w-4 bg-gradient-to-r from-orange-500/20 to-amber-500/20 rounded-full mr-2 sm:mr-3 flex items-center justify-center">
-                                        <span className="text-orange-300 text-xs font-bold">!</span>
-                                      </div>
-                                      <span className="text-orange-300 font-medium text-sm">Re-procesar</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="relative mr-2 sm:mr-3">
-                                        <CheckCircle className="h-4 w-4 text-purple-400" />
-                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                                      </div>
-                                      <span className="text-sm text-white">{getDisplayValue(doc.montoTotalMxn, "MONTO")}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                                <span className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-400/30 backdrop-blur-sm">
-                                  <div className="relative mr-1 sm:mr-2">
-                                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                                  </div>
-                                  <span className="hidden sm:inline">Listo</span>
-                                </span>
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base font-medium">
-                                <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleRowClick(doc.id)
-                                    }}
-                                    className="px-2 sm:px-3 py-1 sm:py-2 text-blue-300 hover:text-blue-100 hover:bg-blue-500/20 rounded-lg flex items-center text-xs font-medium transition-all duration-300 hover:scale-105"
-                                  >
-                                    <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                                    <span className="hidden sm:inline">Ver</span>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="p-4 sm:p-6">
+                      {/* Select All Header */}
+                      <div className="flex items-center justify-end mb-4">
+                        <button
+                          onClick={handleSelectAllFolders}
+                          className="flex items-center space-x-2 px-3 py-2 text-xs font-medium text-white/80 hover:text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all duration-300"
+                        >
+                          <CheckSquare 
+                            className={`h-4 w-4 transition-colors ${
+                              selectedFolderIds.length === folders.length && folders.length > 0
+                                ? 'text-blue-400 fill-current'
+                                : 'text-white/60'
+                            }`}
+                          />
+                          <span>Seleccionar Todas</span>
+                        </button>
+                      </div>
+
+                      {/* Folder Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+                        {folders.map((folder) => (
+                          <FolderCard
+                            key={folder.id}
+                            folder={folder}
+                            onFolderClick={handleFolderClick}
+                            onSelect={handleToggleFolderSelect}
+                            isSelected={selectedFolderIds.includes(folder.id)}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
-                  
+
                   {/* Pagination Controls */}
                   {pagination.totalPages > 1 && (
                     <div className="relative z-10 px-3 sm:px-6 py-3 sm:py-4 border-t border-white/20 bg-gradient-to-r from-white/5 to-blue-500/5 backdrop-blur-sm">
@@ -1339,25 +1568,23 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                             Página {pagination.page} de {pagination.totalPages}
                           </span>
                           <span className="text-xs text-blue-200/50">
-                            ({pagination.totalCount} documentos totales)
+                            ({folders.length} carpeta{folders.length !== 1 ? 's' : ''} en esta página)
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => fetchReadyDocuments(pagination.page - 1)}
                             disabled={!pagination.hasPreviousPage}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
                           >
-                            <ChevronLeft className="h-3 w-3 mr-1" />
-                            Anterior
+                            <ChevronLeft className="h-3 w-3" /> <span>Anterior</span>
                           </button>
                           <button
                             onClick={() => fetchReadyDocuments(pagination.page + 1)}
                             disabled={!pagination.hasNextPage}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
                           >
-                            Siguiente
-                            <ChevronRight className="h-3 w-3 ml-1" />
+                            <span>Siguiente</span> <ChevronRight className="h-3 w-3" />
                           </button>
                         </div>
                       </div>
@@ -1381,7 +1608,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
         {/* Success Modal */}
         {showSuccessModal && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-1000 animate-in fade-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -1402,22 +1629,30 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
                     <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">¡Documento Subido Exitosamente!</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">
+                    ¡{uploadedFileNames.length > 1 ? 'Documentos' : 'Documento'} Subido{uploadedFileNames.length > 1 ? 's' : ''} Exitosamente!
+                  </h3>
                 </div>
-                <p className="text-xs sm:text-sm text-green-200/80">El documento ha sido procesado correctamente</p>
+                <p className="text-xs sm:text-sm text-green-200/80">
+                  {uploadedFileNames.length} archivo{uploadedFileNames.length > 1 ? 's' : ''} procesado{uploadedFileNames.length > 1 ? 's' : ''} correctamente
+                </p>
               </div>
 
               <div className="space-y-3 sm:space-y-4">
-                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-500/20 rounded-lg">
-                      <FileText className="h-5 w-5 text-green-400" />
+                <div className="max-h-64 overflow-y-auto space-y-3 sm:space-y-4">
+                  {uploadedFileNames.map((fileName, index) => (
+                    <div key={index} className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-green-500/20 rounded-lg">
+                          <FileText className="h-5 w-5 text-green-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{fileName}</p>
+                          <p className="text-xs text-green-200/80">Archivo procesado correctamente</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-white">{uploadedFileName}</p>
-                      <p className="text-xs text-green-200/80">Archivo procesado correctamente</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
                 <div className="p-3 bg-white/5 rounded-xl">
@@ -1435,7 +1670,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 <div className="p-3 bg-white/5 rounded-xl">
                   <div className="flex items-center space-x-2 text-xs text-white/60">
                     <CheckSquare className="h-3 w-3 text-green-400" />
-                    <span>El documento está listo para revisión y descarga</span>
+                    <span>El{uploadedFileNames.length > 1 ? 's' : ''} documento{uploadedFileNames.length > 1 ? 's' : ''} está{uploadedFileNames.length > 1 ? 'n' : ''} listo{uploadedFileNames.length > 1 ? 's' : ''} para revisión y descarga</span>
                   </div>
                 </div>
               </div>
@@ -1446,6 +1681,62 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 hover:scale-105 shadow-lg"
                 >
                   Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Feedback Modal */}
+        {showFeedbackModal && feedbackModalContent && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowFeedbackModal(false)
+              }
+            }}
+          >
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => setShowFeedbackModal(false)}
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+              >
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
+              </button>
+
+              <div className="mb-4 sm:mb-6 pr-8">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className={`p-2 rounded-xl ${
+                    feedbackModalContent.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                    feedbackModalContent.type === 'error' ? 'bg-gradient-to-r from-red-500 to-rose-500' :
+                    'bg-gradient-to-r from-blue-500 to-purple-500'
+                  }`}>
+                    {feedbackModalContent.type === 'success' ? (
+                      <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                    ) : feedbackModalContent.type === 'error' ? (
+                      <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                    )}
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">{feedbackModalContent.title}</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-blue-200/80">{feedbackModalContent.message}</p>
+              </div>
+
+              <div className="flex items-center justify-end mt-4 sm:mt-6">
+                <button
+                  onClick={() => setShowFeedbackModal(false)}
+                  className={`w-full sm:w-auto px-4 sm:px-6 py-2 text-sm font-medium text-white rounded-xl hover:scale-105 transition-all duration-300 shadow-lg ${
+                    feedbackModalContent.type === 'success' 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600' :
+                    feedbackModalContent.type === 'error'
+                      ? 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600' :
+                      'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
+                  }`}
+                >
+                  Entendido
                 </button>
               </div>
             </div>
