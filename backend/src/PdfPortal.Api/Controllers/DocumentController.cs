@@ -758,4 +758,72 @@ public class DocumentController : ControllerBase
         // If SMTP not configured, acknowledge request
         return Ok(new { status = "queued", to = toEmail, subject });
     }
+
+    [HttpPost("processed/delete-batch")]
+    [Authorize(Roles = "Client,Admin")]
+    public async Task<IActionResult> DeleteBatch([FromBody] DeleteDocumentsRequest request)
+    {
+        if (request?.DocumentIds == null || request.DocumentIds.Count == 0)
+        {
+            return BadRequest("No document IDs provided");
+        }
+
+        var isAdmin = false;
+        int currentUserId = 0;
+        try
+        {
+            currentUserId = CurrentUserHelper.GetCurrentUserId(HttpContext);
+            var role = CurrentUserHelper.GetCurrentUserRole(HttpContext);
+            isAdmin = string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
+        }
+        catch { }
+
+        int deleted = 0;
+        var originalsToDelete = new HashSet<int>();
+        var originalFilePaths = new Dictionary<int, string>();
+        foreach (var id in request.DocumentIds)
+        {
+            var processed = await _unitOfWork.DocumentProcessed.GetByIdAsync(id);
+            if (processed == null) continue;
+
+            // Ownership check: uploader of source document or admin
+            var source = await _unitOfWork.DocumentOriginals.GetByIdAsync(processed.SourceDocumentId);
+            var isOwner = source != null && source.UploaderUserId == currentUserId;
+            if (!isAdmin && !isOwner) continue;
+
+            // Delete processed PDF file from storage (best-effort)
+            try { await _pdfStorageService.DeleteFileAsync(processed.FilePathFinalPdf); } catch { }
+
+            await _unitOfWork.DocumentProcessed.DeleteAsync(processed);
+            deleted++;
+
+            if (source != null)
+            {
+                originalsToDelete.Add(source.Id);
+                if (!originalFilePaths.ContainsKey(source.Id))
+                {
+                    originalFilePaths[source.Id] = source.FilePath;
+                }
+            }
+        }
+
+        // Delete original records and original files (best-effort)
+        foreach (var originalId in originalsToDelete)
+        {
+            var original = await _unitOfWork.DocumentOriginals.GetByIdAsync(originalId);
+            if (original == null) continue;
+            try
+            {
+                if (originalFilePaths.TryGetValue(originalId, out var path))
+                {
+                    await _pdfStorageService.DeleteFileAsync(path);
+                }
+            }
+            catch { }
+            await _unitOfWork.DocumentOriginals.DeleteAsync(original);
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return Ok(new { deleted });
+    }
 }

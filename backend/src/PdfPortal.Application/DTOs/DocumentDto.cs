@@ -308,6 +308,11 @@ public class BatchDownloadRequest
     public List<int> DocumentIds { get; set; } = new();
 }
 
+public class DeleteDocumentsRequest
+{
+    public List<int> DocumentIds { get; set; } = new();
+}
+
 // Reports & Analytics DTOs
 public class ReportsAnalyticsDto
 {

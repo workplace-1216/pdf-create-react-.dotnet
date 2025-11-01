@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  Shield,
   LogOut,
   Home,
   UserCheck,
@@ -28,9 +27,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   ]
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden flex">
-      {/* Advanced Animated Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="h-screen bg-gray-50 relative overflow-hidden flex">
+      {/* Advanced Animated Background (disabled for white theme) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden">
         {/* Floating Orbs */}
         <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-to-br from-indigo-500/30 to-cyan-500/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
@@ -45,21 +44,79 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </div>
 
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 bg-white/10 backdrop-blur-xl border-r border-white/20 flex flex-col relative z-10`}>
+      {/* Mobile/Tablet overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/30 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+      {/* Mobile/Tablet off-canvas sidebar */}
+      <div className={`fixed inset-y-0 left-0 w-64 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 bg-white border-r border-[#64c7cd]/30 flex flex-col z-40 lg:hidden`}>
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-white/20">
+        <div className="p-4 border-b border-[#64c7cd]/30">
           <div className="flex items-center space-x-3">
             <div className="relative group">
-              <div className="relative p-2 rounded-xl shadow-2xl">
+              <div className="relative p-2 rounded-xl">
+                <img src="/logo.png" alt="CAAST" className="h-12 sm:h-12" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-black">Admin Panel</h1>
+              <p className="text-xs text-black">Sistema de Gestión</p>
+            </div>
+          </div>
+        </div>
+        {/* Sidebar Navigation */}
+        <div className="flex-1 p-4 space-y-2 overflow-y-auto">
+          {sidebarItems.map((item) => {
+            const Icon = item.icon
+            const isActive = location.pathname === item.path
+            return (
+              <Link
+                key={item.id}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive
+                    ? 'bg-[#64c7cd]/15 border border-[#64c7cd]/40'
+                    : 'hover:bg-[#64c7cd]/10 hover:border-[#64c7cd]/30 border border-transparent'
+                  }`}
+              >
+                <div className={`p-2 rounded-lg ${isActive ? 'bg-[#64c7cd]' : 'bg-[#64c7cd]/10 group-hover:bg-[#64c7cd]/20'}`}>
+                  <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-black'}`} />
+                </div>
+                <span className="text-sm font-medium text-black">{item.label}</span>
+              </Link>
+            )
+          })}
+        </div>
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-[#64c7cd]/30">
+          <button
+            onClick={logout}
+            className="flex items-center space-x-3 p-3 rounded-xl hover:bg-[#eb3089]/10 hover:border-[#eb3089]/30 border border-transparent transition-all duration-300 group w-full"
+          >
+            <div className="p-2 rounded-lg bg-[#eb3089]/10 group-hover:bg-[#eb3089]/20">
+              <LogOut className="h-4 w-4 text-black" />
+            </div>
+            <span className="text-sm font-medium text-black">Cerrar Sesión</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-[91px]'} transition-all duration-300 bg-white border-r border-[#64c7cd]/30 flex flex-col relative z-10 hidden lg:flex`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-[#64c7cd]/30">
+          <div className="flex items-center space-x-3">
+            <div className="relative group">
+              <div className="relative p-2 rounded-xl">
                 <img src="/logo.png" alt="CAAST" className="h-12 sm:h-12" />
               </div>
             </div>
             {sidebarOpen && (
               <div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
+                <h1 className="text-lg font-bold text-black">
                   Admin Panel
                 </h1>
-                <p className="text-xs text-blue-200/80">Sistema de Gestión</p>
+                <p className="text-xs text-black">Sistema de Gestión</p>
               </div>
             )}
           </div>
@@ -75,18 +132,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 key={item.id}
                 to={item.path}
                 className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive
-                    ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30'
-                    : 'hover:bg-white/10 hover:border-white/20'
+                    ? 'bg-[#64c7cd]/15 border border-[#64c7cd]/40'
+                    : 'hover:bg-[#64c7cd]/10 hover:border-[#64c7cd]/30 border border-transparent'
                   }`}
               >
                 <div className={`p-2 rounded-lg ${isActive
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500'
-                    : 'bg-white/10 group-hover:bg-white/20'
+                    ? 'bg-[#64c7cd]'
+                    : 'bg-[#64c7cd]/10 group-hover:bg-[#64c7cd]/20'
                   }`}>
-                  <Icon className="h-4 w-4 text-white" />
+                  <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-black'}`} />
                 </div>
                 {sidebarOpen && (
-                  <span className={`text-sm font-medium ${isActive ? 'text-white' : 'text-white/80 group-hover:text-white'
+                  <span className={`text-sm font-medium ${isActive ? 'text-black' : 'text-black'
                     }`}>
                     {item.label}
                   </span>
@@ -97,16 +154,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-white/20">
+        <div className="p-4 border-t border-[#64c7cd]/30">
           <button
             onClick={logout}
-            className="flex items-center space-x-3 p-3 rounded-xl hover:bg-red-500/20 hover:border-red-400/30 transition-all duration-300 group w-full"
+            className="flex items-center space-x-3 p-3 rounded-xl hover:bg-[#eb3089]/10 hover:border-[#eb3089]/30 border border-transparent transition-all duration-300 group w-full"
           >
-            <div className="p-2 rounded-lg bg-white/10 group-hover:bg-red-500/20">
-              <LogOut className="h-4 w-4 text-white" />
+            <div className="p-2 rounded-lg bg-[#eb3089]/10 group-hover:bg-[#eb3089]/20">
+              <LogOut className="h-4 w-4 text-black" />
             </div>
             {sidebarOpen && (
-              <span className="text-sm font-medium text-white/80 group-hover:text-white">
+              <span className="text-sm font-medium text-black">
                 Cerrar Sesión
               </span>
             )}
@@ -115,20 +172,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col relative z-10">
+      <div className="flex-1 flex flex-col relative z-10 overflow-auto">
         {/* Header */}
-        <div className="bg-gradient-to-r from-white/5 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/20 p-4">
+        <div className="bg-[#64c7cd] border-b border-[#64c7cd]/30 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-all duration-300"
+                className="p-2 hover:bg-white/30 rounded-lg transition-all duration-300"
               >
-                <MoreHorizontal className="h-5 w-5 text-white" />
+                <MoreHorizontal className="h-5 w-5 text-black" />
               </button>
               <div>
-                <h2 className="text-xl font-bold text-white">Panel de Administración</h2>
-                <p className="text-sm text-blue-200/80">Sistema de gestión integral</p>
+                <h2 className="text-xl font-bold text-black">Panel de Administración</h2>
+                <p className="text-sm text-black">Sistema de gestión integral</p>
               </div>
             </div>
           </div>

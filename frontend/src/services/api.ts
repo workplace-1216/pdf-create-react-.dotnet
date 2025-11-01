@@ -40,7 +40,6 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
-      // Only redirect to login if not already on login page
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }
@@ -66,12 +65,10 @@ export const documentApi = {
     formData.append('file', file)
     formData.append('templateId', templateId.toString())
     
-    // Create a new axios instance without the default Content-Type header
     const uploadApi = axios.create({
       baseURL: 'http://localhost:5000/api',
     })
     
-    // Add auth token
     const token = localStorage.getItem('token')
     if (token) {
       uploadApi.defaults.headers.common['Authorization'] = `Bearer ${token}`
@@ -91,6 +88,10 @@ export const documentApi = {
   downloadBatch: (documentIds: number[]): Promise<Blob> =>
     api.post('/documents/processed/download-batch', { documentIds }, { responseType: 'blob' })
        .then((res: AxiosResponse<Blob>) => res.data),
+
+  deleteBatch: (documentIds: number[]): Promise<{ deleted: number }> =>
+    api.post('/documents/processed/delete-batch', { documentIds })
+       .then((res: AxiosResponse<{ deleted: number }>) => res.data),
 
   sendByEmail: (documentIds: number[], toEmail?: string): Promise<{ status: string; to: string; subject: string }> =>
     api.post('/documents/processed/send-email', { documentIds, toEmail })

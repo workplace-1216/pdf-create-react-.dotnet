@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Upload,
   Shield,
-  Zap,
   BarChart3,
   ChevronLeft,
   ChevronRight,
@@ -63,9 +62,8 @@ const FolderCard: React.FC<{
 }> = ({ folder, onFolderClick, onSelect, isSelected }) => {
   return (
     <div
-      className={`relative bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 hover:bg-white/15 hover:scale-[102%] transition-all duration-300 group ${
-        isSelected ? 'ring-2 ring-blue-400' : ''
-      }`}
+      className={`relative bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-3 sm:p-4 md:p-6 hover:shadow-2xl hover:scale-[102%] transition-all duration-300 group ${isSelected ? 'ring-2 ring-[#eb3089]' : ''
+        }`}
       onClick={(e) => {
         e.stopPropagation()
         onFolderClick(folder)
@@ -80,71 +78,135 @@ const FolderCard: React.FC<{
         className="absolute top-3 right-3 z-10"
       >
         <CheckSquare
-          className={`h-5 w-5 transition-colors ${
-            isSelected ? 'text-blue-400 fill-current' : 'text-white/60'
-          }`}
+          className={`h-4 w-4 sm:h-5 sm:w-5 transition-colors ${isSelected ? 'text-[#eb3089] fill-current' : 'text-gray-400'
+            }`}
         />
       </button>
 
-      {/* Folder SVG Icon - Clickable like Windows */}
-      <div 
-        className="relative w-24 h-24 mx-auto mb-4"
+      {/* Folder SVG Icon - Beautiful Windows-style */}
+      <div
+        className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-3 sm:mb-4"
       >
         <svg
-          viewBox="0 0 120 100"
+          viewBox="0 0 140 110"
           className="w-full h-full pointer-events-none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Folder base */}
+          <defs>
+            {/* Windows Blue Folder Gradient */}
+            <linearGradient id={`folderGradient-${folder.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#42a5f5" />
+              <stop offset="30%" stopColor="#2196f3" />
+              <stop offset="70%" stopColor="#1976d2" />
+              <stop offset="100%" stopColor="#1565c0" />
+            </linearGradient>
+            {/* Windows Yellow Tab Gradient */}
+            <linearGradient id={`folderTabGradient-${folder.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#ffd54f" />
+              <stop offset="50%" stopColor="#ffc107" />
+              <stop offset="100%" stopColor="#ffb300" />
+            </linearGradient>
+            {/* Enhanced Shadow */}
+            <filter id={`shadow-${folder.id}`} x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
+              <feOffset dx="3" dy="5" result="offsetblur" />
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.35" />
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            {/* Inner glow */}
+            <filter id={`glow-${folder.id}`}>
+              <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Main folder body - Beautiful rounded Windows style */}
           <path
-            d="M10 20 L10 85 Q10 90 15 90 L105 90 Q110 90 110 85 L110 35 L55 35 L45 20 Z"
+            d="M12 28 C12 20, 18 16, 26 16 L48 16 L54 26 L58 26 L58 94 C58 100, 54 104, 48 104 L18 104 C12 104, 8 100, 8 94 L8 28 Z"
             fill={`url(#folderGradient-${folder.id})`}
-            className="drop-shadow-lg"
+            filter={`url(#shadow-${folder.id})`}
+            className="transition-all duration-300 group-hover:brightness-110"
           />
-          {/* Folder tab */}
+
+          {/* Folder tab - Beautiful Windows yellow */}
           <path
-            d="M10 20 Q10 15 15 15 L50 15 L55 25 L45 20 Z"
+            d="M12 28 C12 20, 18 16, 26 16 L48 16 C50 16, 51.5 17.5, 52.5 19.5 L54 22.5 L54 26 L12 26 Z"
             fill={`url(#folderTabGradient-${folder.id})`}
-            className="drop-shadow-md"
+            className="transition-all duration-300 group-hover:brightness-105"
+            filter={`url(#glow-${folder.id})`}
           />
-          {/* Document count circle */}
-          <circle cx="60" cy="55" r="18" fill="rgba(255,255,255,0.95)" className="drop-shadow-xl" />
-          {/* Document count text */}
+
+          {/* Top highlight on tab */}
+          <path
+            d="M12 28 C12 20, 18 16, 26 16 L48 16 C49.5 16, 50.5 17, 51.5 18.5 L52.5 20.5 L52.5 24 L14 24 L12 26 Z"
+            fill="rgba(255,255,255,0.4)"
+            opacity="0.6"
+          />
+
+          {/* Inner highlight for depth on folder */}
+          <path
+            d="M14 30 L14 92 C14 96, 16 98, 20 98 L46 98 L46 30 L26 30 C20 30, 16 30, 14 30 Z"
+            fill="rgba(255,255,255,0.12)"
+          />
+
+          {/* Side shadow for 3D effect */}
+          <path
+            d="M8 28 L8 94 C8 100, 12 104, 18 104 L12 28 Z"
+            fill="rgba(0,0,0,0.15)"
+            opacity="0.3"
+          />
+
+          {/* Document count badge - Beautiful white circle */}
+          <circle
+            cx="68"
+            cy="58"
+            r="18"
+            fill="rgba(255,255,255,0.98)"
+            filter={`url(#shadow-${folder.id})`}
+            stroke="rgba(255,255,255,0.8)"
+            strokeWidth="1.5"
+          />
+          <circle
+            cx="68"
+            cy="58"
+            r="16"
+            fill="rgba(33, 150, 243, 0.08)"
+          />
+
+          {/* Document count text - Beautiful blue */}
           <text
-            x="60"
-            y="62"
+            x="68"
+            y="64"
             textAnchor="middle"
-            className="text-xl font-bold fill-slate-800"
+            className="text-xl sm:text-2xl font-bold fill-[#1976d2] transition-colors duration-300"
             dominantBaseline="middle"
+            style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: '700' }}
           >
             {folder.documentCount}
           </text>
-          {/* Gradients */}
-          <defs>
-            <linearGradient id={`folderGradient-${folder.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.9" />
-            </linearGradient>
-            <linearGradient id={`folderTabGradient-${folder.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.95" />
-              <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.95" />
-            </linearGradient>
-          </defs>
         </svg>
       </div>
 
       {/* Folder Name */}
       <div className="text-center">
-        <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2">
+        <h3 className="text-xs sm:text-sm font-semibold text-slate-800 mb-1 line-clamp-2">
           {folder.folderName}
         </h3>
-        <p className="text-xs text-blue-200/70">
+        <p className="text-[10px] sm:text-xs text-slate-500">
           {folder.documentCount} {folder.documentCount === 1 ? 'documento' : 'documentos'}
         </p>
       </div>
 
       {/* Hover effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-2xl transition-opacity duration-300 pointer-events-none"></div>
+      <div className="absolute inset-0 rounded-2xl transition-opacity duration-300 pointer-events-none"></div>
     </div>
   )
 }
@@ -182,7 +244,7 @@ const TransformationDrawer: React.FC<{
       body.style.top = `-${scrollY}px`
       body.style.width = '100%'
       body.style.overflow = 'hidden'
-      
+
       return () => {
         // Restore scroll position and remove styles
         body.style.position = ''
@@ -209,8 +271,8 @@ const TransformationDrawer: React.FC<{
       <div className={`fixed top-0 right-0 h-full w-full max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20 flex flex-col transition-all duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
         {/* Header with Gradient and Navigation */}
-        <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-4 sm:p-6">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90"></div>
+        <div className="relative bg-[#64c7cd] p-4 sm:p-6">
+          <div className="absolute inset-0 bg-[#64c7cd]"></div>
           <div className="relative">
             {/* Top Row - Title and Close */}
             <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -222,7 +284,7 @@ const TransformationDrawer: React.FC<{
                   <h3 className="text-lg sm:text-xl font-bold text-white">
                     Verificación de Cumplimiento
                   </h3>
-                  <p className="text-blue-100 text-xs sm:text-sm">
+                  <p className="text-white/80 text-xs sm:text-sm">
                     {document?.fiscalData.rfcEmisor || 'Cargando...'} - {document?.fiscalData.periodo || ''}
                   </p>
                 </div>
@@ -246,8 +308,8 @@ const TransformationDrawer: React.FC<{
                     <div
                       key={page}
                       className={`w-2 h-2 rounded-full transition-all duration-300 ${currentPage === page
-                          ? 'bg-white'
-                          : 'bg-white/40'
+                        ? 'bg-white'
+                        : 'bg-white/40'
                         }`}
                     />
                   ))}
@@ -257,7 +319,7 @@ const TransformationDrawer: React.FC<{
                 <button
                   onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                   disabled={currentPage === 0}
-                  className="px-3 py-1.5 text-xs font-medium text-white/90 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:text-white hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
                 >
                   <ChevronLeft className="h-3 w-3" />
                   <span className="hidden sm:inline">Anterior</span>
@@ -265,7 +327,7 @@ const TransformationDrawer: React.FC<{
                 <button
                   onClick={() => setCurrentPage(Math.min(3, currentPage + 1))}
                   disabled={currentPage === 3}
-                  className="px-3 py-1.5 text-xs font-medium text-white/90 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:text-white hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
                 >
                   <span className="hidden sm:inline">Siguiente</span>
                   <ChevronRight className="h-3 w-3" />
@@ -275,134 +337,47 @@ const TransformationDrawer: React.FC<{
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+        <div className="flex-1 overflow-y-auto bg-gray-50">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <div className="flex flex-col items-center space-y-4">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur-lg opacity-75"></div>
-                  <div className="relative animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+                  <div className="absolute inset-0 bg-[#64c7cd] rounded-full blur-lg opacity-75"></div>
+                  <div className="relative animate-spin rounded-full h-12 w-12 border-4 border-[#64c7cd] border-t-transparent"></div>
                 </div>
-                <p className="text-lg font-medium text-white">Cargando detalles del documento...</p>
+                <p className="text-lg font-medium text-black">Cargando detalles del documento...</p>
               </div>
             </div>
           ) : document ? (
             <div className="p-6 space-y-6">
               {/* Section 1: Datos Extraídos - Optimized */}
               {currentPage === 0 && (
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-[101%] transition-all duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="bg-white rounded-2xl shadow-xl hover:shadow-2xl border border-[#64c7cd]/40 p-2 sm:p-3 mb-3 sm:mb-6 relative overflow-auto group transition-all duration-500">
                   <div className="relative z-10">
                     <div className="flex items-center mb-4 sm:mb-6">
                       <div className="relative">
-                        <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-xl sm:rounded-2xl shadow-2xl">
-                          <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        <div className="p-2 sm:p-3 bg-[#64c7cd] rounded-2xl shadow-2xl">
+                          <Upload className="h-6 w-6 text-white" />
                         </div>
-                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="ml-3 sm:ml-4">
-                        <h4 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">1. Datos Extraídos</h4>
-                        <p className="text-xs sm:text-sm text-blue-200/80">Extracción automática con IA</p>
+                      <div>
+                        <h4 className="text-lg sm:text-xl font-bold text-black">1. Datos Extraídos</h4>
+                        <p className="text-xs sm:text-sm text-black/70">Información fiscal identificada del PDF</p>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-                      <div className="bg-gradient-to-br from-white/10 to-blue-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 group hover:shadow-lg hover:scale-[102%] transition-all duration-300">
-                        <label className="text-xs sm:text-sm font-bold text-blue-200 uppercase tracking-wider mb-2 sm:mb-3 block">RFC Emisor</label>
-                        <p className="text-lg sm:text-2xl font-mono text-white mb-3 sm:mb-4">{getDisplayValue(document.fiscalData.rfcEmisor, "RFC")}</p>
-                        <div className="space-y-1 sm:space-y-2">
-                          {getDisplayValue(document.fiscalData.rfcEmisor, "RFC") === "Re-procesar" ? (
-                            <div className="flex items-center space-x-2 text-orange-400">
-                              <div className="h-3 w-3 sm:h-4 sm:w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-xs font-bold">!</span>
-                              </div>
-                              <span className="text-xs sm:text-sm font-semibold">⚠ Necesita re-procesamiento</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center space-x-2 text-green-400">
-                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="text-xs sm:text-sm font-medium">✓ Extraído con 95% confianza</span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-blue-300">
-                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="text-xs sm:text-sm font-medium">✓ Normalizado y validado</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">RFC Emisor</label>
+                        <p className="text-sm sm:text-base font-mono text-black mt-1">{getDisplayValue(document.fiscalData.rfcEmisor, 'RFC')}</p>
                       </div>
-
-                      <div className="bg-gradient-to-br from-white/10 to-green-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 group hover:shadow-lg hover:scale-[102%] transition-all duration-300">
-                        <label className="text-xs sm:text-sm font-bold text-green-200 uppercase tracking-wider mb-2 sm:mb-3 block">Período Declarado</label>
-                        <p className="text-lg sm:text-2xl text-white mb-3 sm:mb-4">{getDisplayValue(document.fiscalData.periodo, "PERIODO")}</p>
-                        <div className="space-y-1 sm:space-y-2">
-                          {getDisplayValue(document.fiscalData.periodo, "PERIODO") === "Re-procesar" ? (
-                            <div className="flex items-center space-x-2 text-orange-400">
-                              <div className="h-3 w-3 sm:h-4 sm:w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-xs font-bold">!</span>
-                              </div>
-                              <span className="text-xs sm:text-sm font-semibold">⚠ Necesita re-procesamiento</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center space-x-2 text-green-400">
-                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="text-xs sm:text-sm font-medium">✓ Extraído con 88% confianza</span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-blue-300">
-                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="text-xs sm:text-sm font-medium">✓ Normalizado y validado</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Período</label>
+                        <p className="text-sm sm:text-base text-black mt-1">{getDisplayValue(document.fiscalData.periodo, 'PERIODO')}</p>
                       </div>
-
-                      <div className="bg-gradient-to-br from-white/10 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 group hover:shadow-lg hover:scale-[102%] transition-all duration-300">
-                        <label className="text-xs sm:text-sm font-bold text-purple-200 uppercase tracking-wider mb-2 sm:mb-3 block">Monto Total (MXN)</label>
-                        <p className="text-lg sm:text-2xl font-bold text-white mb-3 sm:mb-4">{getDisplayValue(document.fiscalData.montoTotalMxn, "MONTO")}</p>
-                        <div className="space-y-1 sm:space-y-2">
-                          {getDisplayValue(document.fiscalData.montoTotalMxn, "MONTO") === "Re-procesar" ? (
-                            <div className="flex items-center space-x-2 text-orange-400">
-                              <div className="h-3 w-3 sm:h-4 sm:w-4 bg-orange-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-xs font-bold">!</span>
-                              </div>
-                              <span className="text-xs sm:text-sm font-semibold">⚠ Necesita re-procesamiento</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center space-x-2 text-green-400">
-                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="text-xs sm:text-sm font-medium">✓ Extraído con 92% confianza</span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-blue-300">
-                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="text-xs sm:text-sm font-medium">✓ Formato estandarizado</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Monto Total (MXN)</label>
+                        <p className="text-sm sm:text-base text-black mt-1">{getDisplayValue(document.fiscalData.montoTotalMxn, 'MONTO')}</p>
                       </div>
-
-                      <div className="bg-gradient-to-br from-white/10 to-indigo-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 group hover:shadow-lg hover:scale-[102%] transition-all duration-300">
-                        <label className="text-xs sm:text-sm font-bold text-indigo-200 uppercase tracking-wider mb-2 sm:mb-3 block">Método de Extracción</label>
-                        <p className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Análisis de patrones + IA</p>
-                        <div className="flex items-center space-x-2 text-green-400">
-                          <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="text-xs sm:text-sm font-medium">✓ Validación automática</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Why it matters section */}
-                    <div className="mt-6 sm:mt-8 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                      <h5 className="text-base sm:text-lg font-bold text-green-300 mb-2 sm:mb-3">¿Por qué es importante?</h5>
-                      <p className="text-sm sm:text-base text-white/80 leading-relaxed">
-                        Esta extracción automatizada garantiza que los datos que vas a reportar a las autoridades fiscales
-                        son exactamente los que el sistema detectó en el documento original, eliminando errores de transcripción
-                        manual y proporcionando confianza total en la integridad de los datos.
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -410,43 +385,42 @@ const TransformationDrawer: React.FC<{
 
               {/* Section 2: Estructura del Documento - Optimized */}
               {currentPage === 1 && (
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-[101%] transition-all duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-4 sm:p-6 relative overflow-hidden group hover:shadow-2xl hover:scale-[101%] transition-all duration-500">
+
                   <div className="relative z-10">
                     <div className="flex items-center mb-4 sm:mb-6">
                       <div className="relative">
-                        <div className="p-2 sm:p-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 rounded-xl sm:rounded-2xl shadow-2xl">
+                        <div className="p-2 sm:p-3 bg-[#a5cc55] rounded-xl sm:rounded-2xl shadow-2xl">
                           <Layers className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                         </div>
-                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
                       </div>
                       <div className="ml-3 sm:ml-4">
-                        <h4 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">2. Estructura del Documento</h4>
-                        <p className="text-xs sm:text-sm text-green-200/80">Modificaciones aplicadas al layout físico</p>
+                        <h4 className="text-lg sm:text-xl font-bold text-black">2. Estructura del Documento</h4>
+                        <p className="text-xs sm:text-sm text-black/70">Modificaciones aplicadas al layout físico</p>
                       </div>
                     </div>
                     <div className="space-y-3 sm:space-y-4">
                       <div>
-                        <label className="text-xs font-medium text-green-200 uppercase tracking-wider">Páginas Incluidas en la Versión Final</label>
-                        <p className="text-sm sm:text-base text-white mt-1">Portada estandarizada + Página 1 del documento original + Resumen</p>
-                        <p className="text-xs sm:text-sm text-green-200/70 mt-1">Se eliminaron 2 páginas adicionales no requeridas</p>
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Páginas Incluidas en la Versión Final</label>
+                        <p className="text-sm sm:text-base text-black mt-1">Portada estandarizada + Página 1 del documento original + Resumen</p>
+                        <p className="text-xs sm:text-sm text-black/60 mt-1">Se eliminaron 2 páginas adicionales no requeridas</p>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2 sm:mr-3" />
-                          <span className="text-xs sm:text-sm text-white">Carátula estándar añadida</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2 sm:mr-3" />
+                          <span className="text-xs sm:text-sm text-black">Carátula estándar añadida</span>
                         </div>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2 sm:mr-3" />
-                          <span className="text-xs sm:text-sm text-white">Pie de página con trazabilidad</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2 sm:mr-3" />
+                          <span className="text-xs sm:text-sm text-black">Pie de página con trazabilidad</span>
                         </div>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2 sm:mr-3" />
-                          <span className="text-xs sm:text-sm text-white">Formularios interactivos eliminados</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2 sm:mr-3" />
+                          <span className="text-xs sm:text-sm text-black">Formularios interactivos eliminados</span>
                         </div>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2 sm:mr-3" />
-                          <span className="text-xs sm:text-sm text-white">JavaScript/adjuntos eliminados</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2 sm:mr-3" />
+                          <span className="text-xs sm:text-sm text-black">JavaScript/adjuntos eliminados</span>
                         </div>
                       </div>
                     </div>
@@ -456,45 +430,44 @@ const TransformationDrawer: React.FC<{
 
               {/* Section 3: Metadatos Aplicados - Optimized */}
               {currentPage === 2 && (
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-[101%] transition-all duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-4 sm:p-6 relative overflow-hidden group hover:shadow-2xl hover:scale-[101%] transition-all duration-500">
+
                   <div className="relative z-10">
                     <div className="flex items-center mb-4 sm:mb-6">
                       <div className="relative">
-                        <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 rounded-xl sm:rounded-2xl shadow-2xl">
+                        <div className="p-2 sm:p-3 bg-[#eb3089] rounded-xl sm:rounded-2xl shadow-2xl">
                           <Database className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                         </div>
-                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse"></div>
                       </div>
                       <div className="ml-3 sm:ml-4">
-                        <h4 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">3. Metadatos Aplicados</h4>
-                        <p className="text-xs sm:text-sm text-purple-200/80">Campos estandarizados escritos en el PDF</p>
+                        <h4 className="text-lg sm:text-xl font-bold text-black">3. Metadatos Aplicados</h4>
+                        <p className="text-xs sm:text-sm text-black/70">Campos estandarizados escritos en el PDF</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Título</label>
-                        <p className="text-sm sm:text-base text-white mt-1">Factura Maquila Normalizada</p>
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Título</label>
+                        <p className="text-sm sm:text-base text-black mt-1">Factura Maquila Normalizada</p>
                       </div>
-                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Autora / Proveedor</label>
-                        <p className="text-sm sm:text-base text-white mt-1">{document.proveedorEmail}</p>
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Autora / Proveedor</label>
+                        <p className="text-sm sm:text-base text-black mt-1">{document.proveedorEmail}</p>
                       </div>
-                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">RFC_Emisor (embebido)</label>
-                        <p className="text-sm sm:text-base font-mono text-white mt-1">{document.fiscalData.rfcEmisor}</p>
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">RFC_Emisor (embebido)</label>
+                        <p className="text-sm sm:text-base font-mono text-black mt-1">{document.fiscalData.rfcEmisor}</p>
                       </div>
-                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Período (embebido)</label>
-                        <p className="text-sm sm:text-base text-white mt-1">{document.fiscalData.periodo}</p>
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Período (embebido)</label>
+                        <p className="text-sm sm:text-base text-black mt-1">{document.fiscalData.periodo}</p>
                       </div>
-                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Fecha de Normalización UTC</label>
-                        <p className="text-sm sm:text-base text-white mt-1">{new Date(document.readyAtUtc).toLocaleString('es-MX')}</p>
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Fecha de Normalización UTC</label>
+                        <p className="text-sm sm:text-base text-black mt-1">{new Date(document.readyAtUtc).toLocaleString('es-MX')}</p>
                       </div>
-                      <div className="bg-gradient-to-br from-white/5 to-purple-500/10 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-purple-200 uppercase tracking-wider">Sistema Generador</label>
-                        <p className="text-sm sm:text-base text-white mt-1">PDF Portal v1.0 - Sello Interno</p>
+                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Sistema Generador</label>
+                        <p className="text-sm sm:text-base text-black mt-1">PDF Portal v1.0 - Sello Interno</p>
                       </div>
                     </div>
                   </div>
@@ -503,76 +476,75 @@ const TransformationDrawer: React.FC<{
 
               {/* Section 4: Cumplimiento Técnico de Formato - Optimized */}
               {currentPage === 3 && (
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 sm:p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-[101%] transition-all duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-4 sm:p-6 relative overflow-hidden group hover:shadow-2xl hover:scale-[101%] transition-all duration-500">
+
                   <div className="relative z-10">
                     <div className="flex items-center mb-4 sm:mb-6">
                       <div className="relative">
-                        <div className="p-2 sm:p-3 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-xl sm:rounded-2xl shadow-2xl">
+                        <div className="p-2 sm:p-3 bg-[#64c7cd] rounded-xl sm:rounded-2xl shadow-2xl">
                           <CheckSquare className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                         </div>
-                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-pulse"></div>
                       </div>
                       <div className="ml-3 sm:ml-4">
-                        <h4 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent">4. Cumplimiento Técnico de Formato</h4>
-                        <p className="text-xs sm:text-sm text-orange-200/80">Verificación para sistemas gubernamentales</p>
+                        <h4 className="text-lg sm:text-xl font-bold text-black">4. Cumplimiento Técnico de Formato</h4>
+                        <p className="text-xs sm:text-sm text-black/70">Verificación para sistemas gubernamentales</p>
                       </div>
                     </div>
                     <div className="space-y-2 sm:space-y-3">
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-white">Archivo es PDF válido</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-black">Archivo es PDF válido</span>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
-                          <span className="text-xs text-green-400">✓ Cumple</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
+                          <span className="text-xs text-[#a5cc55]">Cumple</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-white">Escala de grises 8 bits</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-black">Escala de grises 8 bits</span>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
-                          <span className="text-xs text-green-400">✓ Cumple</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#0aff00] mr-2" />
+                          <span className="text-xs text-[#0aff00]">Cumple</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-white">Resolución 300 DPI</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-black">Resolución 300 DPI</span>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
-                          <span className="text-xs text-green-400">✓ Cumple</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
+                          <span className="text-xs text-[#a5cc55]">Cumple</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-white">Tamaño ≤ 3 MB</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-black">Tamaño ≤ 3 MB</span>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
-                          <span className="text-xs text-green-400">✓ Cumple</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
+                          <span className="text-xs text-[#a5cc55]">Cumple</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-white">Sin formularios interactivos</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-black">Sin formularios interactivos</span>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
-                          <span className="text-xs text-green-400">✓ Cumple</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
+                          <span className="text-xs text-[#a5cc55]">Cumple</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-white">Sin JavaScript incrustado</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-black">Sin JavaScript incrustado</span>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
-                          <span className="text-xs text-green-400">✓ Cumple</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
+                          <span className="text-xs text-[#a5cc55]">Cumple</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-white/10 hover:bg-white/5 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-white">Sin contraseñas</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-black">Sin contraseñas</span>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
-                          <span className="text-xs text-green-400">✓ Cumple</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
+                          <span className="text-xs text-[#a5cc55]">Cumple</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 hover:bg-white/5 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-white">Metadatos obligatorios presentes</span>
+                      <div className="flex items-center justify-between py-2 sm:py-3 hover:bg-gray-50 transition-colors duration-200">
+                        <span className="text-xs sm:text-sm text-black">Metadatos obligatorios presentes</span>
                         <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 mr-2" />
-                          <span className="text-xs text-green-400">✓ Cumple</span>
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
+                          <span className="text-xs text-[#a5cc55]">Cumple</span>
                         </div>
                       </div>
                     </div>
@@ -582,23 +554,22 @@ const TransformationDrawer: React.FC<{
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-white/70">No se pudo cargar la información del documento</p>
+              <p className="text-black/70">No se pudo cargar la información del documento</p>
             </div>
           )}
         </div>
 
         {/* Footer with Download Actions */}
-        <div className="border-t border-white/20 p-6 py-4 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90 backdrop-blur-xl">
+        <div className="border-t border-[#64c7cd]/40 p-6 py-4 bg-[#64c7cd]">
           <div className="flex justify-between items-center">
-            <div className="text-sm lg:block hidden text-white/80 w-1/2">
+            <div className="text-sm lg:block hidden text-white/90 w-1/2">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="relative">
-                  <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
-                  <div className="absolute inset-0 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-ping opacity-30"></div>
+                  <div className="absolute inset-0 w-3 h-3 bg-[#a5cc55] rounded-full animate-ping opacity-30"></div>
                 </div>
                 <p className="font-semibold text-white">Documento verificado y listo para envío</p>
               </div>
-              <p className="text-xs text-blue-200/70">Todas las transformaciones aplicadas exitosamente</p>
+              <p className="text-xs text-white/80">Todas las transformaciones aplicadas exitosamente</p>
             </div>
             <div className="flex space-x-2 sm:space-x-3 justify-end w-full">
               <button
@@ -607,30 +578,14 @@ const TransformationDrawer: React.FC<{
                     onDownload(document.id)
                   }
                 }}
-                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 border border-transparent rounded-xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-blue-500/25"
+                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-[#a5cc55] border border-transparent rounded-xl hover:bg-[#a5cc55]/80 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg"
               >
                 <div className="flex items-center space-x-2">
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">Descargar PDF Final</span>
                 </div>
               </button>
-              <button
-                onClick={async () => {
-                  if (document) {
-                    try {
-                      await documentApi.sendByEmail([Number(document.id)])
-                    } catch (e) {
-                      console.error('Error enviando por correo:', e)
-                    }
-                  }
-                }}
-                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 border border-transparent rounded-xl hover:from-amber-700 hover:via-orange-700 hover:to-rose-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-amber-500/25"
-              >
-                <div className="flex items-center space-x-2">
-                  <Send className="h-4 w-4" />
-                  <span className="hidden sm:inline">Enviar</span>
-                </div>
-              </button>
+
               <button
                 onClick={() => {
                   if (document) {
@@ -650,13 +605,32 @@ const TransformationDrawer: React.FC<{
                     URL.revokeObjectURL(url)
                   }
                 }}
-                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 border border-transparent rounded-xl hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-green-500/25"
+                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded-xl hover:bg-green-700 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg"
               >
                 <div className="flex items-center space-x-2">
                   <FileText className="h-4 w-4" />
                   <span className="hidden sm:inline">Descargar Datos (JSON)</span>
                 </div>
               </button>
+
+              <button
+                onClick={async () => {
+                  if (document) {
+                    try {
+                      await documentApi.sendByEmail([Number(document.id)])
+                    } catch (e) {
+                      console.error('Error enviando por correo:', e)
+                    }
+                  }
+                }}
+                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-[#a15ade] border border-transparent rounded-xl hover:bg-[#a15ade]/80 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg"
+              >
+                <div className="flex items-center space-x-2">
+                  <Send className="h-4 w-4" />
+                  <span className="hidden sm:inline">Enviar</span>
+                </div>
+              </button>
+
             </div>
           </div>
         </div>
@@ -803,26 +777,24 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   const groupDocumentsIntoFolders = (documents: ReadyDocument[]): DocumentFolder[] => {
     if (!documents || documents.length === 0) return []
 
-    // Group documents by minute (documents uploaded within the same minute are in the same folder)
     const folderMap = new Map<string, ReadyDocument[]>()
-    
+
     documents.forEach(doc => {
       const docDate = new Date(doc.readyAtUtc)
-      // Round to nearest minute for grouping
-      const minuteKey = `${docDate.getFullYear()}-${String(docDate.getMonth() + 1).padStart(2, '0')}-${String(docDate.getDate()).padStart(2, '0')} ${String(docDate.getHours()).padStart(2, '0')}:${String(docDate.getMinutes()).padStart(2, '0')}`
-      
-      if (!folderMap.has(minuteKey)) {
-        folderMap.set(minuteKey, [])
+      // Group by second to avoid collapsing multiple uploads in the same minute
+      const secondKey = `${docDate.getFullYear()}-${String(docDate.getMonth() + 1).padStart(2, '0')}-${String(docDate.getDate()).padStart(2, '0')} ${String(docDate.getHours()).padStart(2, '0')}:${String(docDate.getMinutes()).padStart(2, '0')}:${String(docDate.getSeconds()).padStart(2, '0')}`
+
+      if (!folderMap.has(secondKey)) {
+        folderMap.set(secondKey, [])
       }
-      folderMap.get(minuteKey)!.push(doc)
+      folderMap.get(secondKey)!.push(doc)
     })
 
-    // Convert map to folders array
     const folders: DocumentFolder[] = Array.from(folderMap.entries()).map(([folderName, docs], index) => {
       const uploadDateTime = new Date(docs[0].readyAtUtc)
-      // Format folder name: "DD/MM/YYYY HH:MM"
-      const formattedName = `${String(uploadDateTime.getDate()).padStart(2, '0')}/${String(uploadDateTime.getMonth() + 1).padStart(2, '0')}/${uploadDateTime.getFullYear()} ${String(uploadDateTime.getHours()).padStart(2, '0')}:${String(uploadDateTime.getMinutes()).padStart(2, '0')}`
-      
+      // Format folder name: "DD/MM/YYYY HH:MM:SS"
+      const formattedName = `${String(uploadDateTime.getDate()).padStart(2, '0')}/${String(uploadDateTime.getMonth() + 1).padStart(2, '0')}/${uploadDateTime.getFullYear()} ${String(uploadDateTime.getHours()).padStart(2, '0')}:${String(uploadDateTime.getMinutes()).padStart(2, '0')}:${String(uploadDateTime.getSeconds()).padStart(2, '0')}`
+
       return {
         id: `folder-${index}-${folderName}`,
         folderName: formattedName,
@@ -832,7 +804,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       }
     })
 
-    // Sort folders by upload date (newest first)
     return folders.sort((a, b) => b.uploadDateTime.getTime() - a.uploadDateTime.getTime())
   }
 
@@ -914,11 +885,11 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       // Backend returns paginated result with items array
       const documents = Array.isArray(data.items) ? data.items : []
       setReadyDocs(documents)
-      
+
       // Group documents into folders by upload time (group by minute)
       const groupedFolders = groupDocumentsIntoFolders(documents)
       setFolders(groupedFolders)
-      
+
       setPagination({
         page: data.page || 1,
         pageSize: data.pageSize || 10,
@@ -990,7 +961,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       body.style.top = `-${scrollY}px`
       body.style.width = '100%'
       body.style.overflow = 'hidden'
-      
+
       return () => {
         body.style.position = ''
         body.style.top = ''
@@ -1015,8 +986,8 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
   // Handle folder selection
   const handleToggleFolderSelect = (folderId: string) => {
-    setSelectedFolderIds(prev => 
-      prev.includes(folderId) 
+    setSelectedFolderIds(prev =>
+      prev.includes(folderId)
         ? prev.filter(id => id !== folderId)
         : [...prev, folderId]
     )
@@ -1037,11 +1008,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     setShowFolderModal(false)
   }
 
-  const handleCloseFolderModal = () => {
-    setShowFolderModal(false)
-    setSelectedFolder(null)
-    setFolderPage(1)
-  }
+  // removed unused handleCloseFolderModal
 
   const handleDocumentFromFolderClick = (docId: string) => {
     setSelectedDocId(docId)
@@ -1051,7 +1018,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
   const handleSendSelectedFolders = async () => {
     if (selectedFolderIds.length === 0) return
-    
+
     setSending(true)
     try {
       // Get all document IDs from selected folders
@@ -1064,9 +1031,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
           })
         }
       })
-      
+
       if (documentIds.length === 0) return
-      
+
       await documentApi.sendByEmail(documentIds)
       const totalDocs = documentIds.length
       showFeedback('success', 'Documentos Enviados', `Se enviaron ${totalDocs} documento(s) de ${selectedFolderIds.length} carpeta(s) exitosamente`)
@@ -1079,32 +1046,86 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     }
   }
 
+  // removed unused sanitizeFileName helper
+
+  const triggerDownload = async (fileName: string, blob: Blob) => {
+    // Validate blob type and size
+    if (!blob || blob.size === 0) {
+      throw new Error('Empty file received')
+    }
+    // If server returned JSON (likely error text), try to parse to show meaningful error
+    if (blob.type && blob.type.includes('application/json')) {
+      try {
+        const text = await blob.text()
+        throw new Error(text || 'Invalid file content')
+      } catch (e: any) {
+        throw new Error(typeof e?.message === 'string' ? e.message : 'Invalid file content')
+      }
+    }
+
+    const url = window.URL.createObjectURL(blob)
+    const link = window.document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.rel = 'noopener'
+    window.document.body.appendChild(link)
+    // Give the browser a moment before clicking programmatically
+    setTimeout(() => {
+      try { link.click() } finally {
+        window.document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+      }
+    }, 0)
+  }
+
   const handleDownloadSelectedFolders = async () => {
+    // If user is inside a folder view and no folders are selected, download current folder
+    if (selectedFolder && selectedFolderIds.length === 0) {
+      setDownloading(true)
+      try {
+        const documentIds = selectedFolder.documents.map(d => Number(d.id))
+        if (documentIds.length === 0) {
+          showFeedback('info', 'Sin documentos', 'La carpeta actual no contiene documentos para descargar.')
+          return
+        }
+        const blob = await documentApi.downloadBatch(documentIds)
+        const ts = new Date()
+        const dateStr = `${ts.getFullYear()}${String(ts.getMonth() + 1).padStart(2, '0')}${String(ts.getDate()).padStart(2, '0')}_${String(ts.getHours()).padStart(2, '0')}${String(ts.getMinutes()).padStart(2, '0')}${String(ts.getSeconds()).padStart(2, '0')}`
+        await triggerDownload(`carpetas_${dateStr}.zip`, blob)
+        showFeedback('success', 'Descarga iniciada', `Se descargará un ZIP con ${documentIds.length} documento(s).`)
+      } catch (error) {
+        console.error('Error downloading folder:', error)
+        showFeedback('error', 'Error de Descarga', 'No se pudo descargar la carpeta actual.')
+      } finally {
+        setDownloading(false)
+      }
+      return
+    }
+
     if (selectedFolderIds.length === 0) return
     setDownloading(true)
     try {
-      const documentIds: number[] = []
+      // Merge all documents from selected folders into a single ZIP download
+      const documentIdSet = new Set<number>()
       selectedFolderIds.forEach(folderId => {
         const folder = folders.find(f => f.id === folderId)
-        if (folder) {
-          folder.documents.forEach(doc => documentIds.push(Number(doc.id)))
-        }
+        if (!folder) return
+        folder.documents.forEach(doc => documentIdSet.add(Number(doc.id)))
       })
-      if (documentIds.length === 0) return
-      const blob = await documentApi.downloadBatch(documentIds)
-      const url = window.URL.createObjectURL(blob)
-      const link = window.document.createElement('a')
-      link.href = url
-      const dateStr = new Date().toISOString().slice(0, 10)
-      link.download = `documentos_${dateStr}.zip`
-      window.document.body.appendChild(link)
-      link.click()
-      window.document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      showFeedback('success', 'Descarga iniciada', `Se descargará un ZIP con ${documentIds.length} documento(s).`)
+      const mergedIds = Array.from(documentIdSet)
+      if (mergedIds.length === 0) {
+        showFeedback('info', 'Sin documentos', 'Las carpetas seleccionadas no contienen documentos para descargar.')
+        return
+      }
+
+      const blob = await documentApi.downloadBatch(mergedIds)
+      const ts = new Date()
+      const dateStr = `${ts.getFullYear()}${String(ts.getMonth() + 1).padStart(2, '0')}${String(ts.getDate()).padStart(2, '0')}_${String(ts.getHours()).padStart(2, '0')}${String(ts.getMinutes()).padStart(2, '0')}${String(ts.getSeconds()).padStart(2, '0')}`
+      await triggerDownload(`carpetas_${dateStr}.zip`, blob)
+      showFeedback('success', 'Descarga iniciada', `Se descargará un ZIP con ${mergedIds.length} documento(s) de ${selectedFolderIds.length} carpeta(s).`)
     } catch (error) {
-      console.error('Error downloading batch:', error)
-      showFeedback('error', 'Error de Descarga', 'No se pudo descargar el ZIP de documentos seleccionados.')
+      console.error('Merged batch download failed:', error)
+      showFeedback('error', 'Error de Descarga', 'No fue posible descargar las carpetas seleccionadas.')
     } finally {
       setDownloading(false)
     }
@@ -1124,16 +1145,28 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     }
     setDeleting(true)
     try {
-      // TODO: call backend delete when available
+      // collect processed document ids from the folders to delete
+      const documentIds: number[] = []
+      pendingDeleteFolderIds.forEach(folderId => {
+        const folder = folders.find(f => f.id === folderId)
+        if (!folder) return
+        folder.documents.forEach(doc => documentIds.push(Number(doc.id)))
+      })
+      if (documentIds.length > 0) {
+        await documentApi.deleteBatch(documentIds)
+      }
       const remaining = folders.filter(f => !pendingDeleteFolderIds.includes(f.id))
       setFolders(remaining)
+      // also remove from readyDocs so counts and other UI match
+      setReadyDocs(prev => prev.filter(doc => !documentIds.includes(Number(doc.id))))
       setSelectedFolderIds([])
       setPendingDeleteFolderIds([])
       setShowDeleteConfirm(false)
-      showFeedback('success', 'Carpetas eliminadas', 'Las carpetas seleccionadas fueron eliminadas de la vista.')
-    } catch (error) {
+      showFeedback('success', 'Eliminación completada', 'Las carpetas y sus documentos asociados fueron eliminados.')
+    } catch (error: any) {
       console.error('Error deleting documents:', error)
-      showFeedback('error', 'Error al eliminar', 'No se pudieron eliminar las carpetas seleccionadas.')
+      const message = error?.response?.data || 'No se pudieron eliminar las carpetas seleccionadas.'
+      showFeedback('error', 'Error al eliminar', typeof message === 'string' ? message : 'Error inesperado al eliminar.')
     } finally {
       setDeleting(false)
     }
@@ -1256,35 +1289,29 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative flex flex-col">
+    <div className="min-h-screen bg-gray-50 relative flex flex-col client-text-black">
       {/* Advanced Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        {/* Floating Orbs */}
-        <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-to-br from-indigo-500/30 to-cyan-500/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl animate-pulse delay-500"></div>
 
         {/* Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:50px_50px] opacity-20"></div>
 
         {/* Animated Lines */}
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-pulse delay-1000"></div>
       </div>
 
       {/* Modern Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-white/5 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/20 relative z-10">
+      <div className="sticky top-0 z-50 bg-[#64c7cd] backdrop-blur-xl border-b border-white/20 relative z-10">
         <div className="w-full flex justify-center sm:px-6 lg:px-8 py-2 sm:py-3">
           <div className="flex items-center justify-between w-[90%] sm:w-[70%]">
             {/* Left Side - Logo & Title */}
             <div className="flex items-center space-x-3">
               <div className="relative group">
-                <div className="relative p-2 rounded-xl shadow-2xl">
+                <div className="relative p-2 rounded-xl">
                   <img src="/logo.png" alt="CAAST" className="h-8 sm:h-10" />
                 </div>
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold">
                   Centro de Cumplimiento Fiscal
                 </h1>
               </div>
@@ -1296,10 +1323,12 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               {/* Logout Button */}
               <button
                 onClick={logout}
-                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-400/30 rounded-xl hover:from-red-500/30 hover:to-rose-500/30 hover:border-red-400/50 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+                className="flex items-center space-x-3 p-3 rounded-xl hover:bg-[#eb3089]/10 hover:border-[#eb3089]/30 border border-transparent transition-all duration-300 group"
               >
-                <LogOut className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Cerrar Sesión</span>
+                <div className="p-2 rounded-lg bg-[#eb3089]/10 group-hover:bg-[#eb3089]/20">
+                  <LogOut className="h-4 w-4 !text-rose-500" />
+                </div>
+                <span className="text-sm font-medium !text-rose-500 hidden sm:inline">Cerrar Sesión</span>
               </button>
             </div>
           </div>
@@ -1312,14 +1341,13 @@ export const ClientReadyDocumentsPage: React.FC = () => {
           <div className="w-full gap-3 sm:gap-4">
             <div className='w-full flex flex-col lg:flex-row sm:flex-col'>
               {/* Modern Upload Section */}
-              <div className="w-full bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 mb-3 sm:mb-6 relative overflow-auto group hover:bg-white/15 transition-all duration-500">
+              <div className="w-full bg-white rounded-2xl shadow-xl hover:shadow-2xl border border-[#64c7cd]/30 p-2 sm:p-3 mb-3 sm:mb-6 relative overflow-auto group transition-all duration-500">
                 {/* Glassmorphism Effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
                 <div className="relative z-10 flex items-center justify-between flex flex-col">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="relative">
-                      <div className="p-3 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-2xl shadow-2xl">
+                      <div className="p-3 bg-[#a5cc55] rounded-2xl shadow-2xl">
                         <Upload className="h-6 w-6 text-white" />
                       </div>
                     </div>
@@ -1332,8 +1360,8 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   {/* Modern Drag and Drop Area */}
                   <div
                     className={`relative border-2 border-dashed rounded-2xl p-4 sm:p-6 text-center transition-all duration-500 w-full sm:w-80 group/drop ${dragActive
-                      ? 'border-blue-400 bg-blue-500/20 backdrop-blur-sm'
-                      : 'border-white/30 hover:border-blue-400/50 hover:bg-white/5 backdrop-blur-sm'
+                      ? 'border-[#64c7cd] bg-[#64c7cd]/10'
+                      : 'border-[#64c7cd]/30 hover:border-[#64c7cd] hover:bg-[#64c7cd]/5'
                       }`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
@@ -1346,41 +1374,55 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       accept=".pdf"
                       multiple
                       onChange={handleFileSelect}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0"
                     />
-                    <div className="space-y-3 sm:space-y-4">
+                    <div className="space-y-3 sm:space-y-4 relative z-10">
                       <div className="relative mx-auto w-8 h-8 sm:w-10 sm:h-10">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-lg opacity-50 group-hover/drop:opacity-75 transition-opacity duration-500"></div>
-                        <div className="relative w-full h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-2xl group-hover/drop:scale-110 transition-transform duration-500">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            if (fileInputRef.current) {
+                              fileInputRef.current.click()
+                            }
+                          }}
+                          className="relative w-full h-full bg-[#64c7cd] rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-500 cursor-pointer z-20"
+                        >
                           <Upload className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                        </div>
+                        </button>
                       </div>
                       <div>
-                        <p className="text-sm sm:text-base font-semibold text-white mb-1">
-                          {selectedFiles.length > 0 
+                        <p className="text-sm sm:text-base font-semibold text-black mb-1">
+                          {selectedFiles.length > 0
                             ? `${selectedFiles.length} archivo(s) seleccionado(s)`
                             : 'Arrastra PDF aquí'}
                         </p>
-                        <p className="text-xs text-blue-200/70">
-                          {selectedFiles.length > 0 
+                        <p className="text-xs text-black/70">
+                          {selectedFiles.length > 0
                             ? 'Selecciona más archivos o sube'
                             : 'o haz clic para seleccionar múltiples PDF'}
                         </p>
                       </div>
                       {selectedFiles.length > 0 && (
-                        <div className="w-full max-h-32 overflow-y-auto space-y-2 mt-2">
+                        <div className="w-full max-h-32 overflow-y-auto space-y-2 mt-2 relative z-10">
                           {selectedFiles.map((file, index) => (
-                            <div key={index} className="inline-flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-full w-full">
+                            <div key={index} className="inline-flex items-center justify-between px-3 py-1.5 bg-[#a5cc55]/10 border border-[#a5cc55]/40 rounded-full w-full">
                               <div className="flex items-center flex-1 min-w-0">
-                                <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse flex-shrink-0"></div>
-                                <p className="text-xs text-green-300 font-medium truncate">{file.name}</p>
+                                <p className="text-xs text-black font-medium truncate">{file.name}</p>
                               </div>
                               <button
                                 onClick={(e) => {
+                                  e.preventDefault()
                                   e.stopPropagation()
                                   setSelectedFiles(prev => prev.filter((_, i) => i !== index))
                                 }}
-                                className="ml-2 text-red-400 hover:text-red-300 transition-colors flex-shrink-0"
+                                onMouseDown={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                }}
+                                className="ml-2 text-black hover:text-red-600 transition-colors flex-shrink-0 relative z-20"
+                                type="button"
                               >
                                 <XCircle className="h-4 w-4" />
                               </button>
@@ -1395,9 +1437,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   <button
                     onClick={handleUpload}
                     disabled={selectedFiles.length === 0 || uploading}
-                    className={`relative px-6 mt-5 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold text-sm sm:text-base transition-all duration-500 w-full sm:w-auto overflow-auto group/btn ${selectedFiles.length > 0 && !uploading
-                      ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 shadow-2xl hover:shadow-blue-500/25 hover:scale-105'
-                      : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
+                    className={`relative px-6 mt-5 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold text-sm sm:text-base transition-all duration-500 w-full sm:w-auto overflow-hidden group/btn ${selectedFiles.length > 0 && !uploading
+                      ? 'bg-[#eb3089] text-white shadow-2xl hover:shadow-lg hover:scale-105'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                   >
                     {uploading ? (
@@ -1410,9 +1452,8 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       </div>
                     ) : (
                       <div className="flex items-center justify-center">
-                        <Zap className="h-5 w-5 mr-2 group-hover/btn:animate-pulse" />
                         <span className="font-semibold">
-                          {selectedFiles.length > 0 
+                          {selectedFiles.length > 0
                             ? `Subir ${selectedFiles.length} Documento(s)`
                             : 'Subir Documento(s)'
                           }
@@ -1431,20 +1472,19 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               {/* Modern Stats Cards */}
               <div className="w-full lg:ml-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4 mb-3 sm:mb-6">
                 {/* Documents Processed */}
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-2 sm:p-3 hover:shadow-2xl hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
+
                   <div className="relative z-10">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="relative">
-                          <div className="p-3 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-2xl shadow-2xl">
+                          <div className="p-3 bg-[#64c7cd] rounded-2xl shadow-2xl">
                             <FileText className="h-5 w-5 text-white" />
                           </div>
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-pulse"></div>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-blue-200/80 uppercase tracking-wider">Procesados</p>
-                          <p className="text-xl sm:text-2xl font-bold text-white">{readyDocs.length}</p>
+                          <p className="text-xs font-semibold text-black/70 uppercase tracking-wider">Procesados</p>
+                          <p className="text-xl sm:text-2xl font-bold text-black">{readyDocs.length}</p>
                         </div>
                       </div>
                     </div>
@@ -1452,20 +1492,19 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 </div>
 
                 {/* Compliance Rate */}
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-2 sm:p-3 hover:shadow-2xl hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
+
                   <div className="relative z-10">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="relative">
-                          <div className="p-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 rounded-2xl shadow-2xl">
+                          <div className="p-3 bg-[#a5cc55] rounded-2xl shadow-2xl">
                             <Shield className="h-5 w-5 text-white" />
                           </div>
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-green-200/80 uppercase tracking-wider">Cumplidos</p>
-                          <p className="text-xl sm:text-2xl font-bold text-white">
+                          <p className="text-xs font-semibold text-black/70 uppercase tracking-wider">Cumplidos</p>
+                          <p className="text-xl sm:text-2xl font-bold text-black">
                             {readyDocs.filter(doc => doc.complianceStatus === 'COMPLIANT').length}
                           </p>
                         </div>
@@ -1475,20 +1514,19 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 </div>
 
                 {/* Partial Compliance */}
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-amber-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-2 sm:p-3 hover:shadow-2xl hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
+
                   <div className="relative z-10">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="relative">
-                          <div className="p-3 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-2xl shadow-2xl">
+                          <div className="p-3 bg-[#a15ade] rounded-2xl shadow-2xl">
                             <AlertCircle className="h-5 w-5 text-white" />
                           </div>
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-orange-400 to-amber-400 rounded-full animate-pulse"></div>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-orange-200/80 uppercase tracking-wider">Parciales</p>
-                          <p className="text-xl sm:text-2xl font-bold text-white">
+                          <p className="text-xs font-semibold text-black/70 uppercase tracking-wider">Parciales</p>
+                          <p className="text-xl sm:text-2xl font-bold text-black">
                             {readyDocs.filter(doc => doc.complianceStatus === 'PARTIAL').length}
                           </p>
                         </div>
@@ -1498,20 +1536,19 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 </div>
 
                 {/* Non-Compliant */}
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-2 sm:p-3 hover:bg-white/15 hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-rose-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-2 sm:p-3 hover:shadow-2xl hover:scale-[101%] transition-all duration-500 group relative overflow-hidden">
+
                   <div className="relative z-10">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="relative">
-                          <div className="p-3 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 rounded-2xl shadow-2xl">
+                          <div className="p-3 bg-[#eb3089] rounded-2xl shadow-2xl">
                             <XCircle className="h-5 w-5 text-white" />
                           </div>
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-red-400 to-rose-400 rounded-full animate-pulse"></div>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-red-200/80 uppercase tracking-wider">No Cumplidos</p>
-                          <p className="text-xl sm:text-2xl font-bold text-white">
+                          <p className="text-xs font-semibold text-black/70 uppercase tracking-wider">No Cumplidos</p>
+                          <p className="text-xl sm:text-2xl font-bold text-black">
                             {readyDocs.filter(doc => doc.complianceStatus === 'NON_COMPLIANT').length}
                           </p>
                         </div>
@@ -1525,24 +1562,22 @@ export const ClientReadyDocumentsPage: React.FC = () => {
             {/* Right Column - Document List */}
             <div className="flex flex-col mb-5">
               {/* Modern Document List */}
-              <div className="flex bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden flex flex-col relative group">
-                {/* Glassmorphism Effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
-                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="flex bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 overflow-hidden flex flex-col relative group">
+
                 {/* Modern Header */}
-                <div className="relative z-10 px-2 sm:px-3 py-2 sm:py-3 border-b border-white/20 bg-gradient-to-r from-white/10 to-blue-500/10 backdrop-blur-sm">
+                <div className="relative z-10 px-2 sm:px-3 py-2 sm:py-3 border-b border-[#64c7cd]/40 bg-[#64c7cd]">
                   <div className="flex items-center justify-start">
                     <div className="flex items-center space-x-3">
                       <div className="relative">
-                        <div className="p-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl shadow-2xl">
+                        <div className="p-3 bg-[#eb3089] rounded-2xl shadow-2xl">
                           <BarChart3 className="h-5 w-5 text-white" />
                         </div>
                       </div>
                       <div>
-                        <h2 className="text-base sm:text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                        <h2 className="text-white sm:text-xl font-bold">
                           Documentos Finalizados ({folders.length})
                         </h2>
-                        <p className="text-xs text-blue-200/70">Verificación de cumplimiento</p>
+                        <p className="text-xs text-white">Verificación de cumplimiento</p>
                       </div>
                     </div>
                   </div>
@@ -1553,15 +1588,14 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                     getDisplayValue(doc.periodo, "PERIODO") === "Re-procesar" ||
                     getDisplayValue(doc.montoTotalMxn, "MONTO") === "Re-procesar"
                   ) && (
-                      <div className="relative z-10 bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-400/30 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3 backdrop-blur-sm">
+                      <div className="relative z-10 bg-[#eb3089]/10 border border-[#eb3089]/40 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3">
                         <div className="flex items-center">
                           <div className="relative mr-2 sm:mr-3">
-                            <div className="h-4 w-4 sm:h-5 sm:w-5 bg-orange-400/20 rounded-full flex items-center justify-center">
-                              <span className="text-orange-300 text-xs font-bold">!</span>
+                            <div className="h-4 w-4 sm:h-5 sm:w-5 bg-[#eb3089] rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">!</span>
                             </div>
-                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
                           </div>
-                          <p className="text-xs sm:text-sm text-orange-200 font-medium">
+                          <p className="text-xs sm:text-sm text-black font-medium">
                             Algunos documentos necesitan re-procesamiento
                           </p>
                         </div>
@@ -1570,11 +1604,11 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
                   {/* Bulk Actions */}
                   {selectedFolderIds.length > 0 && (
-                    <div className="relative z-10 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3 backdrop-blur-sm">
+                    <div className="relative z-10 bg-[#64c7cd]/10 border border-[#64c7cd]/40 rounded-xl p-2 sm:p-3 mt-2 sm:mt-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center">
-                          <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300 mr-2" />
-                          <p className="text-xs sm:text-sm text-blue-200 font-medium">
+                          <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5 text-[#64c7cd] mr-2" />
+                          <p className="text-xs sm:text-sm text-black font-medium">
                             {selectedFolderIds.length} carpeta(s) seleccionada(s)
                           </p>
                         </div>
@@ -1582,7 +1616,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                           <button
                             onClick={handleDownloadSelectedFolders}
                             disabled={downloading}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 border border-transparent rounded-lg hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-green-500/25 hover:scale-105 transition-all duration-300"
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-[#a5cc55] border border-transparent rounded-lg hover:bg-[#a5cc55]/80 disabled:opacity-50 flex items-center space-x-2 shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300"
                           >
                             {downloading ? (
                               <>
@@ -1599,7 +1633,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                           <button
                             onClick={handleDeleteSelectedFolders}
                             disabled={deleting}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 border border-transparent rounded-lg hover:from-red-700 hover:to-rose-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-rose-500/25 hover:scale-105 transition-all duration-300"
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-[#eb3089] border border-transparent rounded-lg hover:bg-[#eb3089]/80 disabled:opacity-50 flex items-center space-x-2 shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300"
                           >
                             {deleting ? (
                               <>
@@ -1616,7 +1650,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                           <button
                             onClick={handleSendSelectedFolders}
                             disabled={sending}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 border border-transparent rounded-lg hover:from-amber-700 hover:via-orange-700 hover:to-rose-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg hover:shadow-amber-500/25 hover:scale-105 transition-all duration-300"
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-[#a15ade] border border-transparent rounded-lg hover:bg-[#a15ade]/80 disabled:opacity-50 flex items-center space-x-2 shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300"
                           >
                             {sending ? (
                               <>
@@ -1648,14 +1682,14 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                               setSelectedFolder(null)
                               setFolderPage(1)
                             }}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all duration-300 flex items-center space-x-1"
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg transition-all duration-300 flex items-center space-x-1"
                           >
                             <ChevronLeft className="h-3 w-3" />
                             <span>Volver</span>
                           </button>
                           <div>
-                            <h3 className="text-sm sm:text-base font-bold text-white">{selectedFolder.folderName}</h3>
-                            <p className="text-xs text-blue-200/70">{selectedFolder.documentCount} {selectedFolder.documentCount === 1 ? 'documento' : 'documentos'}</p>
+                            <h3 className="text-sm sm:text-base font-bold text-black">{selectedFolder.folderName}</h3>
+                            <p className="text-xs text-black/70">{selectedFolder.documentCount} {selectedFolder.documentCount === 1 ? 'documento' : 'documentos'}</p>
                           </div>
                         </div>
                       </div>
@@ -1668,43 +1702,43 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                             <div
                               key={doc.id}
                               onClick={() => handleDocumentFromFolderClick(doc.id)}
-                              className="flex items-center space-x-4 p-3 bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-all duration-200 group border border-white/10 hover:border-white/20"
+                              className="flex items-center space-x-4 p-3 bg-white border border-[#64c7cd]/30 hover:border-[#64c7cd] hover:shadow-lg rounded-lg cursor-pointer transition-all duration-200 group"
                             >
                               <div className="flex-shrink-0">
-                                <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded flex items-center justify-center shadow-lg">
+                                <div className="w-10 h-10 bg-[#64c7cd] rounded flex items-center justify-center shadow-lg">
                                   <FileText className="h-6 w-6 text-white" />
                                 </div>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate group-hover:text-blue-200">
+                                <p className="text-sm font-medium text-black truncate group-hover:text-[#64c7cd]">
                                   {doc.proveedorEmail || `Documento ${doc.id}`}
                                 </p>
                                 <div className="flex items-center space-x-4 mt-1">
                                   <div className="flex items-center space-x-2">
-                                    <span className="text-xs text-white/60">RFC:</span>
-                                    <span className="text-xs text-white/80 font-mono">{getDisplayValue(doc.rfcEmisor, 'RFC')}</span>
+                                    <span className="text-xs text-black/60">RFC:</span>
+                                    <span className="text-xs text-black/80 font-mono">{getDisplayValue(doc.rfcEmisor, 'RFC')}</span>
                                   </div>
                                   <div className="flex items-center space-x-2">
-                                    <span className="text-xs text-white/60">Período:</span>
-                                    <span className="text-xs text-white/80">{getDisplayValue(doc.periodo, 'PERIODO')}</span>
+                                    <span className="text-xs text-black/60">Período:</span>
+                                    <span className="text-xs text-black/80">{getDisplayValue(doc.periodo, 'PERIODO')}</span>
                                   </div>
                                   <div className="flex items-center space-x-2">
-                                    <span className="text-xs text-white/60">Monto:</span>
-                                    <span className="text-xs text-white/80">{getDisplayValue(doc.montoTotalMxn, 'MONTO')}</span>
+                                    <span className="text-xs text-black/60">Monto:</span>
+                                    <span className="text-xs text-black/80">{getDisplayValue(doc.montoTotalMxn, 'MONTO')}</span>
                                   </div>
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2 flex-shrink-0">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDocumentFromFolderClick(doc.id) }}
-                                  className="p-2 text-blue-300 hover:text-blue-100 hover:bg-blue-500/20 rounded-lg transition-all duration-200"
+                                  className="p-2 text-[#64c7cd] hover:text-[#64c7cd]/80 hover:bg-[#64c7cd]/10 rounded-lg transition-all duration-200"
                                   title="Ver documento"
                                 >
                                   <Eye className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={async (e) => { e.stopPropagation(); await handleDownload(doc.id) }}
-                                  className="p-2 text-green-300 hover:text-green-100 hover:bg-green-500/20 rounded-lg transition-all duration-200"
+                                  className="p-2 text-[#a5cc55] hover:text-[#a5cc55]/80 hover:bg-[#a5cc55]/10 rounded-lg transition-all duration-200"
                                   title="Descargar documento"
                                 >
                                   <Download className="h-4 w-4" />
@@ -1718,21 +1752,21 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       {Math.ceil(selectedFolder.documents.length / folderPageSize) > 1 && (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            <span className="text-xs text-blue-200/70">Página {folderPage} de {Math.ceil(selectedFolder.documents.length / folderPageSize)}</span>
-                            <span className="text-xs text-blue-200/50">({selectedFolder.documents.length} documento{selectedFolder.documents.length !== 1 ? 's' : ''} total)</span>
+                            <span className="text-xs text-black/70">Página {folderPage} de {Math.ceil(selectedFolder.documents.length / folderPageSize)}</span>
+                            <span className="text-xs text-black/50">({selectedFolder.documents.length} documento{selectedFolder.documents.length !== 1 ? 's' : ''} total)</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => setFolderPage(prev => Math.max(1, prev - 1))}
                               disabled={folderPage === 1}
-                              className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
                             >
                               <ChevronLeft className="h-3 w-3" /> <span>Anterior</span>
                             </button>
                             <button
                               onClick={() => setFolderPage(prev => Math.min(Math.ceil(selectedFolder.documents.length / folderPageSize), prev + 1))}
                               disabled={folderPage >= Math.ceil(selectedFolder.documents.length / folderPageSize)}
-                              className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
                             >
                               <span>Siguiente</span> <ChevronRight className="h-3 w-3" />
                             </button>
@@ -1746,21 +1780,20 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       <div className="flex items-center justify-end mb-4">
                         <button
                           onClick={handleSelectAllFolders}
-                          className="flex items-center space-x-2 px-3 py-2 text-xs font-medium text-white/80 hover:text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all duration-300"
+                          className="flex items-center space-x-2 px-3 py-2 text-xs font-medium text-black bg-white border border-[#64c7cd]/40 rounded-lg hover:bg-gray-50 hover:shadow-lg transition-all duration-300"
                         >
-                          <CheckSquare 
-                            className={`h-4 w-4 transition-colors ${
-                              selectedFolderIds.length === folders.length && folders.length > 0
-                                ? 'text-blue-400 fill-current'
-                                : 'text-white/60'
-                            }`}
+                          <CheckSquare
+                            className={`h-4 w-4 transition-colors ${selectedFolderIds.length === folders.length && folders.length > 0
+                                ? 'text-[#eb3089] fill-current'
+                                : 'text-black/40'
+                              }`}
                           />
                           <span>Seleccionar Todas</span>
                         </button>
                       </div>
 
                       {/* Folder Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
                         {folders.map((folder) => (
                           <FolderCard
                             key={folder.id}
@@ -1776,13 +1809,13 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
                   {/* Pagination Controls */}
                   {pagination.totalPages > 1 && (
-                    <div className="relative z-10 px-3 sm:px-6 py-3 sm:py-4 border-t border-white/20 bg-gradient-to-r from-white/5 to-blue-500/5 backdrop-blur-sm">
+                    <div className="relative z-10 px-3 sm:px-6 py-3 sm:py-4 border-t border-[#64c7cd]/40 bg-gray-50">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs text-blue-200/70">
+                          <span className="text-xs text-black/70">
                             Página {pagination.page} de {pagination.totalPages}
                           </span>
-                          <span className="text-xs text-blue-200/50">
+                          <span className="text-xs text-black/50">
                             ({folders.length} carpeta{folders.length !== 1 ? 's' : ''} en esta página)
                           </span>
                         </div>
@@ -1790,14 +1823,14 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                           <button
                             onClick={() => fetchReadyDocuments(pagination.page - 1)}
                             disabled={!pagination.hasPreviousPage}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
                           >
                             <ChevronLeft className="h-3 w-3" /> <span>Anterior</span>
                           </button>
                           <button
                             onClick={() => fetchReadyDocuments(pagination.page + 1)}
                             disabled={!pagination.hasNextPage}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 backdrop-blur-sm flex items-center space-x-1"
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
                           >
                             <span>Siguiente</span> <ChevronRight className="h-3 w-3" />
                           </button>
@@ -1831,24 +1864,24 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               }
             }}
           >
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto transition-all duration-1000 animate-in zoom-in-95 slide-in-from-bottom-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto transition-all duration-1000 animate-in zoom-in-95 slide-in-from-bottom-4">
               <button
                 onClick={() => setShowSuccessModal(false)}
                 className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
               >
-                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-black" />
               </button>
 
               <div className="mb-4 sm:mb-6 pr-8">
                 <div className="flex items-center space-x-3 mb-2">
-                  <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                  <div className="p-2 bg-[#a5cc55] rounded-xl">
                     <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">
+                  <h3 className="text-lg sm:text-xl font-bold text-black">
                     ¡{uploadedFileNames.length > 1 ? 'Documentos' : 'Documento'} Subido{uploadedFileNames.length > 1 ? 's' : ''} Exitosamente!
                   </h3>
                 </div>
-                <p className="text-xs sm:text-sm text-green-200/80">
+                <p className="text-xs sm:text-sm text-black">
                   {uploadedFileNames.length} archivo{uploadedFileNames.length > 1 ? 's' : ''} procesado{uploadedFileNames.length > 1 ? 's' : ''} correctamente
                 </p>
               </div>
@@ -1856,35 +1889,35 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               <div className="space-y-3 sm:space-y-4">
                 <div className="max-h-64 overflow-y-auto space-y-3 sm:space-y-4">
                   {uploadedFileNames.map((fileName, index) => (
-                    <div key={index} className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                    <div key={index} className="p-4 bg-[#a5cc55]/10 border border-[#a5cc55]/40 rounded-xl">
                       <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-green-500/20 rounded-lg">
-                          <FileText className="h-5 w-5 text-green-400" />
+                        <div className="p-2 bg-[#a5cc55] rounded-lg">
+                          <FileText className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{fileName}</p>
-                          <p className="text-xs text-green-200/80">Archivo procesado correctamente</p>
+                          <p className="text-sm font-medium text-black truncate">{fileName}</p>
+                          <p className="text-xs text-black">Archivo procesado correctamente</p>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="p-3 bg-white/5 rounded-xl">
+                <div className="p-3 bg-gray-50 rounded-xl">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-white/60 mb-1">Total de Documentos</p>
-                      <p className="text-lg font-semibold text-white">{readyDocs.length}</p>
+                      <p className="text-xs text-black mb-1">Total de Documentos</p>
+                      <p className="text-lg font-semibold text-black">{readyDocs.length}</p>
                     </div>
-                    <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
-                      <Database className="h-5 w-5 text-white" />
+                    <div className="p-2 bg-gray-100 rounded-lg">
+                      <Database className="h-5 w-5 text-black" />
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3 bg-white/5 rounded-xl">
-                  <div className="flex items-center space-x-2 text-xs text-white/60">
-                    <CheckSquare className="h-3 w-3 text-green-400" />
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <div className="flex items-center space-x-2 text-xs text-black">
+                    <CheckSquare className="h-3 w-3 text-black" />
                     <span>El{uploadedFileNames.length > 1 ? 's' : ''} documento{uploadedFileNames.length > 1 ? 's' : ''} está{uploadedFileNames.length > 1 ? 'n' : ''} listo{uploadedFileNames.length > 1 ? 's' : ''} para revisión y descarga</span>
                   </div>
                 </div>
@@ -1893,7 +1926,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               <div className="flex items-center justify-end mt-4 sm:mt-6">
                 <button
                   onClick={() => setShowSuccessModal(false)}
-                  className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 hover:scale-105 shadow-lg"
+                  className="w-full sm:w-auto bg-[#eb3089] px-4 sm:px-6 py-2 text-sm font-medium text-white border border-[#eb3089]/40 rounded-xl hover:bg-[#eb3089]/80 transition-all duration-300 hover:scale-105 shadow-md"
                 >
                   Continuar
                 </button>
@@ -1912,21 +1945,17 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               }
             }}
           >
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setShowFeedbackModal(false)}
                 className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
               >
-                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-black" />
               </button>
 
               <div className="mb-4 sm:mb-6 pr-8">
                 <div className="flex items-center space-x-3 mb-2">
-                  <div className={`p-2 rounded-xl ${
-                    feedbackModalContent.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                    feedbackModalContent.type === 'error' ? 'bg-gradient-to-r from-red-500 to-rose-500' :
-                    'bg-gradient-to-r from-blue-500 to-purple-500'
-                  }`}>
+                  <div className={`p-2 rounded-xl ${feedbackModalContent.type === 'success' ? 'bg-[#a5cc55]' : feedbackModalContent.type === 'error' ? 'bg-[#eb3089]' : 'bg-[#64c7cd]'}`}>
                     {feedbackModalContent.type === 'success' ? (
                       <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     ) : feedbackModalContent.type === 'error' ? (
@@ -1935,21 +1964,15 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                       <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     )}
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">{feedbackModalContent.title}</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-black">{feedbackModalContent.title}</h3>
                 </div>
-                <p className="text-xs sm:text-sm text-blue-200/80">{feedbackModalContent.message}</p>
+                <p className="text-xs sm:text-sm text-black">{feedbackModalContent.message}</p>
               </div>
 
               <div className="flex items-center justify-end mt-4 sm:mt-6">
                 <button
                   onClick={() => setShowFeedbackModal(false)}
-                  className={`w-full sm:w-auto px-4 sm:px-6 py-2 text-sm font-medium text-white rounded-xl hover:scale-105 transition-all duration-300 shadow-lg ${
-                    feedbackModalContent.type === 'success' 
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600' :
-                    feedbackModalContent.type === 'error'
-                      ? 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600' :
-                      'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
-                  }`}
+                  className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-xl hover:bg-[#64c7cd]/80 hover:shadow-lg transition-all duration-300"
                 >
                   Entendido
                 </button>
@@ -1964,22 +1987,22 @@ export const ClientReadyDocumentsPage: React.FC = () => {
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={(e) => { if (e.target === e.currentTarget && !deleting) cancelDeleteFolders() }}
           >
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative">
               <button
                 onClick={cancelDeleteFolders}
                 disabled={deleting}
                 className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-colors duration-200 disabled:opacity-50"
               >
-                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white/60 hover:text-white" />
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-black" />
               </button>
               <div className="mb-4 sm:mb-6 pr-8">
                 <div className="flex items-center space-x-3 mb-2">
-                  <div className="p-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-500">
+                  <div className="p-2 rounded-xl bg-[#eb3089]">
                     <Trash2 className="h-5 w-5 text-white" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">Confirmar eliminación</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-black">Confirmar eliminación</h3>
                 </div>
-                <p className="text-xs sm:text-sm text-blue-200/80">
+                <p className="text-xs sm:text-sm text-black">
                   {pendingDeleteFolderIds.length} carpeta(s) seleccionada(s). ¿Deseas eliminar las carpetas y todos sus documentos de la vista?
                 </p>
               </div>
@@ -1987,14 +2010,14 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 <button
                   onClick={cancelDeleteFolders}
                   disabled={deleting}
-                  className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-white/10 hover:bg-white/15 border border-white/20 rounded-xl transition-all duration-300"
+                  className="px-4 sm:px-6 py-2 text-sm font-medium text-black bg-white border border-[#64c7cd]/40 rounded-xl hover:bg-gray-50 hover:shadow-lg transition-all duration-300"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={confirmDeleteFolders}
                   disabled={deleting}
-                  className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-xl hover:from-red-700 hover:to-rose-700 transition-all duration-300"
+                  className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-[#eb3089] border border-[#eb3089]/40 rounded-xl hover:bg-[#eb3089]/80 hover:shadow-lg transition-all duration-300"
                 >
                   {deleting ? 'Eliminando...' : 'Sí, eliminar'}
                 </button>

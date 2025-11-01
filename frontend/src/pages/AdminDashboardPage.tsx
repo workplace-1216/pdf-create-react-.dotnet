@@ -28,9 +28,9 @@ import {
 
 // Pie colors
 const STATUS_COLORS = {
-  processed: '#10B981',
-  pending: '#F59E0B',
-  error: '#EF4444'
+  processed: '#a5cc55',
+  pending: '#64c7cd',
+  error: '#eb3089'
 }
 
 export const AdminDashboardPage: React.FC = () => {
@@ -66,10 +66,10 @@ export const AdminDashboardPage: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'success': return 'text-green-400'
-      case 'warning': return 'text-yellow-400'
-      case 'error': return 'text-red-400'
-      default: return 'text-blue-400'
+      case 'success': return 'bg-[#a5cc55]'
+      case 'warning': return 'bg-[#64c7cd]'
+      case 'error': return 'bg-[#eb3089]'
+      default: return 'bg-[#64c7cd]'
     }
   }
 
@@ -85,7 +85,7 @@ export const AdminDashboardPage: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 px-20 flex items-center justify-center min-h-screen">
-        <div className="text-white text-xl">Cargando estadísticas...</div>
+        <div className="text-black text-xl">Cargando estadísticas...</div>
       </div>
     )
   }
@@ -95,85 +95,81 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Documents */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-105 transition-all duration-500">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div className="bg-white rounded-2xl shadow-md hover:shadow-lg border border-[#64c7cd]/40 p-6 relative">
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl shadow-lg">
+              <div className="p-3 bg-[#64c7cd] rounded-xl shadow-md">
                 <FileText className="h-6 w-6 text-white" />
               </div>
-              <div className="flex items-center space-x-1 text-green-400">
+              <div className="flex items-center space-x-1 text-black">
                 <ArrowUpRight className="h-4 w-4" />
                 <span className="text-sm font-medium">+12%</span>
               </div>
             </div>
             <div>
-              <p className="text-sm text-blue-200/70 font-medium mb-1">Total Documentos</p>
-              <p className="text-2xl font-bold text-white">{stats?.totalDocuments?.toLocaleString() || '0'}</p>
-              <p className="text-xs text-green-400 mt-2">Procesados: {stats?.processedDocuments || 0}</p>
+              <p className="text-sm text-black font-medium mb-1">Total Documentos</p>
+              <p className="text-2xl font-bold text-black">{stats?.totalDocuments?.toLocaleString() || '0'}</p>
+              <p className="text-xs text-black mt-2">Procesados: {stats?.processedDocuments || 0}</p>
             </div>
           </div>
         </div>
 
         {/* Active Users */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-105 transition-all duration-500">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div className="bg-white rounded-2xl shadow-md hover:shadow-lg border border-[#64c7cd]/40 p-6 relative">
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-lg">
+              <div className="p-3 bg-[#a5cc55] rounded-xl shadow-md">
                 <Users className="h-6 w-6 text-white" />
               </div>
-              <div className="flex items-center space-x-1 text-green-400">
+              <div className="flex items-center space-x-1 text-black">
                 <ArrowUpRight className="h-4 w-4" />
                 <span className="text-sm font-medium">+8%</span>
               </div>
             </div>
             <div>
-              <p className="text-sm text-green-200/70 font-medium mb-1">Usuarios Activos</p>
-              <p className="text-2xl font-bold text-white">{stats?.activeUsers || 0}</p>
-              <p className="text-xs text-green-400 mt-2">Total: {stats?.totalUsers || 0}</p>
+              <p className="text-sm text-black font-medium mb-1">Usuarios Activos</p>
+              <p className="text-2xl font-bold text-black">{stats?.activeUsers || 0}</p>
+              <p className="text-xs text-black mt-2">Total: {stats?.totalUsers || 0}</p>
             </div>
           </div>
         </div>
 
         {/* Processed Today */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-105 transition-all duration-500">
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div className="bg-white rounded-2xl shadow-md hover:shadow-lg border border-[#64c7cd]/40 p-6 relative">
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl shadow-lg">
+              <div className="p-3 bg-[#eb3089] rounded-xl shadow-md">
                 <CheckCircle className="h-6 w-6 text-white" />
               </div>
-              <div className="flex items-center space-x-1 text-green-400">
+              <div className="flex items-center space-x-1 text-black">
                 <ArrowUpRight className="h-4 w-4" />
                 <span className="text-sm font-medium">Hoy</span>
               </div>
             </div>
             <div>
-              <p className="text-sm text-yellow-200/70 font-medium mb-1">Procesados Hoy</p>
-              <p className="text-2xl font-bold text-white">{stats?.processedToday || 0}</p>
-              <p className="text-xs text-green-400 mt-2">Pendientes: {stats?.pendingDocuments || 0}</p>
+              <p className="text-sm text-black font-medium mb-1">Procesados Hoy</p>
+              <p className="text-2xl font-bold text-black">{stats?.processedToday || 0}</p>
+              <p className="text-xs text-black mt-2">Pendientes: {stats?.pendingDocuments || 0}</p>
             </div>
           </div>
         </div>
 
         {/* System Health */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group hover:bg-white/15 hover:scale-105 transition-all duration-500">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div className="bg-white rounded-2xl shadow-md hover:shadow-lg border border-[#64c7cd]/40 p-6 relative">
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg">
+              <div className="p-3 bg-[#64c7cd] rounded-xl shadow-md">
                 <Server className="h-6 w-6 text-white" />
               </div>
-              <div className="flex items-center space-x-1 text-green-400">
+              <div className="flex items-center space-x-1 text-black">
                 <CheckCircle className="h-4 w-4" />
                 <span className="text-sm font-medium">Excelente</span>
               </div>
             </div>
             <div>
-              <p className="text-sm text-purple-200/70 font-medium mb-1">Documentos con Error</p>
-              <p className="text-2xl font-bold text-white">{stats?.errorDocuments || 0}</p>
-              <p className="text-xs text-red-400 mt-2">Requieren atención</p>
+              <p className="text-sm text-black font-medium mb-1">Documentos con Error</p>
+              <p className="text-2xl font-bold text-black">{stats?.errorDocuments || 0}</p>
+              <p className="text-xs text-black mt-2">Requieren atención</p>
             </div>
           </div>
         </div>
@@ -182,65 +178,65 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Document Trends Chart */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+        <div className="bg-white rounded-2xl shadow-md hover:shadow-lg border border-[#64c7cd]/40 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-white">Tendencias de Documentos</h3>
-              <p className="text-sm text-blue-200/80">Últimos 12 meses</p>
+              <h3 className="text-lg font-bold text-black">Tendencias de Documentos</h3>
+              <p className="text-sm text-black">Últimos 12 meses</p>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-              <span className="text-xs text-white">Documentos</span>
-              <div className="w-3 h-3 bg-green-400 rounded-full ml-2"></div>
-              <span className="text-xs text-white">Procesados</span>
+              <div className="w-3 h-3 bg-[#64c7cd] rounded-full"></div>
+              <span className="text-xs text-black">Documentos</span>
+              <div className="w-3 h-3 bg-[#a5cc55] rounded-full ml-2"></div>
+              <span className="text-xs text-black">Procesados</span>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={(analytics?.monthlyTrends || []).map(m => ({ name: m.month, documents: m.documents, processed: m.processed }))}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" />
-              <YAxis stroke="rgba(255,255,255,0.6)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
+              <XAxis dataKey="name" stroke="rgba(0,0,0,0.6)" />
+              <YAxis stroke="rgba(0,0,0,0.6)" />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.8)', 
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'rgba(255,255,255,0.95)', 
+                  border: '1px solid rgba(100,199,205,0.4)',
                   borderRadius: '8px',
-                  color: 'white'
+                  color: '#000'
                 }} 
               />
               <Legend />
-              <Line type="monotone" dataKey="documents" stroke="#3B82F6" strokeWidth={2} />
-              <Line type="monotone" dataKey="processed" stroke="#10B981" strokeWidth={2} />
+              <Line type="monotone" dataKey="documents" stroke="#64c7cd" strokeWidth={2} />
+              <Line type="monotone" dataKey="processed" stroke="#a5cc55" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         {/* User Activity Chart */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+        <div className="bg-white rounded-2xl shadow-md hover:shadow-lg border border-[#64c7cd]/40 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-white">Actividad de Usuarios</h3>
-              <p className="text-sm text-blue-200/80">Últimas 24 horas</p>
+              <h3 className="text-lg font-bold text-black">Actividad de Usuarios</h3>
+              <p className="text-sm text-black">Últimas 24 horas</p>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-xs text-green-400">En tiempo real</span>
+              <div className="w-2 h-2 bg-[#a5cc55] rounded-full animate-pulse"></div>
+              <span className="text-xs text-black">En tiempo real</span>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={analytics?.userActivity || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="time" stroke="rgba(255,255,255,0.6)" />
-              <YAxis stroke="rgba(255,255,255,0.6)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
+              <XAxis dataKey="time" stroke="rgba(0,0,0,0.6)" />
+              <YAxis stroke="rgba(0,0,0,0.6)" />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.8)', 
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'rgba(255,255,255,0.95)', 
+                  border: '1px solid rgba(100,199,205,0.4)',
                   borderRadius: '8px',
-                  color: 'white'
+                  color: '#000'
                 }} 
               />
-              <Area type="monotone" dataKey="users" stroke="#10B981" fill="rgba(16, 185, 129, 0.2)" />
+              <Area type="monotone" dataKey="users" stroke="#a5cc55" fill="rgba(165, 204, 85, 0.2)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -252,8 +248,8 @@ export const AdminDashboardPage: React.FC = () => {
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-white">Estado de Documentos</h3>
-              <p className="text-sm text-blue-200/80">Distribución actual</p>
+              <h3 className="text-lg font-bold text-black">Estado de Documentos</h3>
+              <p className="text-sm text-black">Distribución actual</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={250}>
@@ -293,15 +289,15 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* System Metrics (derived from backend stats) */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+        <div className="bg-white rounded-2xl shadow-md hover:shadow-lg border border-[#64c7cd]/40 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-white">Métricas del Sistema</h3>
-              <p className="text-sm text-blue-200/80">Derivadas de estadísticas</p>
+              <h3 className="text-lg font-bold text-black">Métricas del Sistema</h3>
+              <p className="text-sm text-black">Derivadas de estadísticas</p>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-xs text-green-400">Estable</span>
+              <div className="w-2 h-2 bg-[#a5cc55] rounded-full animate-pulse"></div>
+              <span className="text-xs text-black">Estable</span>
             </div>
           </div>
           <div className="space-y-4">
@@ -321,14 +317,14 @@ export const AdminDashboardPage: React.FC = () => {
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <span className="text-sm text-white">{metric.name}</span>
+                      <div className="w-2 h-2 bg-[#64c7cd] rounded-full"></div>
+                      <span className="text-sm text-black">{metric.name}</span>
                     </div>
-                    <span className="text-sm font-medium text-white">{metric.value}%</span>
+                    <span className="text-sm font-medium text-black">{metric.value}%</span>
                   </div>
-                  <div className="w-full bg-white/10 rounded-full h-2">
+                  <div className="w-full bg-gray-100 rounded-full h-2">
                     <div 
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
+                      className="bg-[#64c7cd] h-2 rounded-full transition-all duration-500"
                       style={{ width: `${metric.value}%` }}
                     ></div>
                   </div>
@@ -339,26 +335,26 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+        <div className="bg-white rounded-2xl shadow-md hover:shadow-lg border border-[#64c7cd]/40 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-white">Actividad Reciente</h3>
-              <p className="text-sm text-blue-200/80">Últimas acciones</p>
+              <h3 className="text-lg font-bold text-black">Actividad Reciente</h3>
+              <p className="text-sm text-black">Últimas acciones</p>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-xs text-green-400">En tiempo real</span>
+              <div className="w-2 h-2 bg-[#a5cc55] rounded-full animate-pulse"></div>
+              <span className="text-xs text-black">En tiempo real</span>
             </div>
           </div>
           <div className="space-y-4">
             {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-center space-x-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300">
+              <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-300">
                 <div className={`w-2 h-2 rounded-full ${getStatusColor(activity.status)} animate-pulse`}></div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-white">{activity.message}</p>
-                  <p className="text-xs text-white/60">{activity.time}</p>
+                  <p className="text-sm font-medium text-black">{activity.message}</p>
+                  <p className="text-xs text-black">{activity.time}</p>
                 </div>
-                <div className="text-white/40">
+                <div className="text-black/60">
                   {getStatusIcon(activity.status)}
                 </div>
               </div>
