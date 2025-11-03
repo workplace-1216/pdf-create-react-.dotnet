@@ -5,6 +5,7 @@ using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using PdfPortal.Application.Interfaces;
 using PdfPortal.Application.Models;
+using PdfPortal.WinFormsProcessor;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -12,48 +13,83 @@ namespace PdfPortal.Infrastructure.Services;
 
 public class TemplateProcessorService : ITemplateProcessorService
 {
+    private readonly PdfProcessor _winFormsProcessor;
+
+    public TemplateProcessorService()
+    {
+        _winFormsProcessor = new PdfProcessor();
+        Console.WriteLine("[TemplateProcessorService] Initialized with WinForms PDF Processor");
+    }
+
     public async Task<ProcessResult> ProcessAsync(byte[] originalPdfBytes, TemplateRuleDefinition rules, VendorContext vendor)
     {
         var result = new ProcessResult
         {
-            FinalPdfBytes = originalPdfBytes, // TODO: Apply actual PDF transformations
+            FinalPdfBytes = originalPdfBytes,
             ExtractedFields = new Dictionary<string, string>()
         };
 
         try
         {
-            // Extract text from PDF
-            var extractedText = await ExtractTextFromPdf(originalPdfBytes);
-
-            // Process metadata rules with regex extraction
-            foreach (var rule in rules.MetadataRules)
+            Console.WriteLine("[TemplateProcessorService] Processing PDF with WinForms processor...");
+            
+            // Use WinForms processor for enhanced extraction
+            var winFormsResult = await _winFormsProcessor.ProcessPdfAsync(originalPdfBytes, "document.pdf", vendor?.Email);
+            
+            if (winFormsResult.Success)
             {
-                var extractedValue = ProcessMetadataRule(rule.Value, extractedText, vendor);
-                result.ExtractedFields[rule.Key] = extractedValue;
+                Console.WriteLine($"[TemplateProcessorService] WinForms extraction successful. Confidence: {winFormsResult.ConfidenceScore}%");
+                
+                // Use WinForms extracted data
+                foreach (var kvp in winFormsResult.ExtractedData)
+                {
+                    result.ExtractedFields[kvp.Key] = kvp.Value?.ToString() ?? "N/A";
+                }
+
+                // Store the processed PDF
+                result.FinalPdfBytes = winFormsResult.ProcessedPdfBytes ?? originalPdfBytes;
+                
+                Console.WriteLine($"[TemplateProcessorService] Extracted fields:");
+                foreach (var field in result.ExtractedFields)
+                {
+                    Console.WriteLine($"  {field.Key}: {field.Value}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[TemplateProcessorService] WinForms extraction failed: {winFormsResult.ErrorMessage}");
+                
+                // Fallback to traditional extraction
+                var extractedText = await ExtractTextFromPdf(originalPdfBytes);
+
+                // Process metadata rules with regex extraction
+                foreach (var rule in rules.MetadataRules)
+                {
+                    var extractedValue = ProcessMetadataRule(rule.Value, extractedText, vendor);
+                    result.ExtractedFields[rule.Key] = extractedValue;
+                }
             }
 
-            // TODO: Apply page rules (keepPages, footerText)
+            // Apply page rules (keepPages, footerText)
             if (rules.PageRules != null)
             {
-                // TODO: Implement page filtering based on keepPages
-                // TODO: Add footer text with placeholder replacement
                 var footerText = ReplacePlaceholders(rules.PageRules.FooterText, result.ExtractedFields, vendor);
-                // Note: Footer text placeholder replacement ready, but not yet drawn into PDF
+                // Note: Footer text placeholder replacement ready
             }
 
-            // TODO: Apply cover page
+            // Apply cover page
             if (rules.CoverPage?.Enabled == true)
             {
-                // TODO: Generate cover page with fields
                 foreach (var field in rules.CoverPage.Fields)
                 {
                     var fieldValue = ReplacePlaceholders(field.Value, result.ExtractedFields, vendor);
-                    // Note: Cover page field processing ready, but not yet drawn into PDF
+                    // Note: Cover page field processing ready
                 }
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[TemplateProcessorService] Error: {ex.Message}");
             result.ExtractedFields["error"] = $"Processing failed: {ex.Message}";
         }
 

@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PdfPortal.Domain\PdfPortal.Domain.csproj" />
     <ProjectReference Include="..\PdfPortal.Application\PdfPortal.Application.csproj" />
+    <ProjectReference Include="..\PdfPortal.WinFormsProcessor\PdfPortal.WinFormsProcessor.csproj" />
   </ItemGroup>
 
 </Project>

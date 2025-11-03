@@ -15,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PdfComplianceProcessor", "src\PdfComplianceProcessor\PdfComplianceProcessor.csproj", "{2EF96D03-666E-466C-B212-884B4979B90F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PdfPortal.WinFormsProcessor", "src\PdfPortal.WinFormsProcessor\PdfPortal.WinFormsProcessor.csproj", "{B7C8D9EA-F012-4567-89AB-CDEF01234567}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -73,11 +75,24 @@ Global
 		{2EF96D03-666E-466C-B212-884B4979B90F}.Release|x64.Build.0 = Release|Any CPU
 		{2EF96D03-666E-466C-B212-884B4979B90F}.Release|x86.ActiveCfg = Release|Any CPU
 		{2EF96D03-666E-466C-B212-884B4979B90F}.Release|x86.Build.0 = Release|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Debug|x64.Build.0 = Debug|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Debug|x86.Build.0 = Debug|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Release|x64.ActiveCfg = Release|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Release|x64.Build.0 = Release|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Release|x86.ActiveCfg = Release|Any CPU
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{2EF96D03-666E-466C-B212-884B4979B90F} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{B7C8D9EA-F012-4567-89AB-CDEF01234567} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

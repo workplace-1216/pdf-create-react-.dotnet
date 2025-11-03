@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
   Users,
+  User,
   UserPlus,
   Search,
   Trash2,
@@ -547,7 +548,18 @@ export const UserManagementPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
-              {filteredUsers.map((user) => (
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <User className="h-12 w-12 text-gray-400 mb-4" />
+                      <p className="text-lg font-medium text-black mb-1">No hay usuarios</p>
+                      <p className="text-sm text-black/60">No se encontraron usuarios con los filtros aplicados</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-white/5 transition-colors duration-200">
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
@@ -603,14 +615,24 @@ export const UserManagementPage: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Mobile Cards */}
         <div className="lg:hidden">
-          {filteredUsers.map((user) => (
+          {filteredUsers.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="flex flex-col items-center justify-center">
+                <User className="h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-lg font-medium text-black mb-1">No hay usuarios</p>
+                <p className="text-sm text-black/60">No se encontraron usuarios con los filtros aplicados</p>
+              </div>
+            </div>
+          ) : (
+            filteredUsers.map((user) => (
             <div key={user.id} className="p-4 border-b border-[#64c7cd]/20 last:border-b-0 hover:bg-[#64c7cd]/5 transition-colors duration-200">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3">
@@ -669,7 +691,8 @@ export const UserManagementPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
 

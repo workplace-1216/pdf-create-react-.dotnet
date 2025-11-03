@@ -1,0 +1,16 @@
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\bin\Debug\net8.0\PdfPortal.WinFormsProcessor.deps.json
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\bin\Debug\net8.0\PdfPortal.WinFormsProcessor.dll
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\bin\Debug\net8.0\PdfPortal.WinFormsProcessor.pdb
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\bin\Debug\net8.0\PdfPortal.Domain.dll
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\bin\Debug\net8.0\PdfPortal.Domain.pdb
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPortal.WinFormsProcessor.csproj.AssemblyReference.cache
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPortal.WinFormsProcessor.GeneratedMSBuildEditorConfig.editorconfig
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPortal.WinFormsProcessor.AssemblyInfoInputs.cache
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPortal.WinFormsProcessor.AssemblyInfo.cs
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPortal.WinFormsProcessor.csproj.CoreCompileInputs.cache
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPortal.WinFormsProcessor.sourcelink.json
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPorta.2A1753BD.Up2Date
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPortal.WinFormsProcessor.dll
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\refint\PdfPortal.WinFormsProcessor.dll
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\PdfPortal.WinFormsProcessor.pdb
+E:\workana\pdfgate\backend\src\PdfPortal.WinFormsProcessor\obj\Debug\net8.0\ref\PdfPortal.WinFormsProcessor.dll

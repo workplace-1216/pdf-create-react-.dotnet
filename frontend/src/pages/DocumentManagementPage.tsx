@@ -357,7 +357,18 @@ export const DocumentManagementPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
-              {filteredDocuments.map((doc) => (
+              {filteredDocuments.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <FileText className="h-12 w-12 text-gray-400 mb-4" />
+                      <p className="text-lg font-medium text-black mb-1">No hay documentos</p>
+                      <p className="text-sm text-black/60">No se encontraron documentos con los filtros aplicados</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredDocuments.map((doc) => (
                 <tr key={doc.id} className="hover:bg-gray-50 transition-colors duration-200">
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
@@ -422,14 +433,24 @@ export const DocumentManagementPage: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Mobile/Tablet Cards */}
         <div className="lg:hidden">
-          {filteredDocuments.map((doc) => (
+          {filteredDocuments.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="flex flex-col items-center justify-center">
+                <FileText className="h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-lg font-medium text-black mb-1">No hay documentos</p>
+                <p className="text-sm text-black/60">No se encontraron documentos con los filtros aplicados</p>
+              </div>
+            </div>
+          ) : (
+            filteredDocuments.map((doc) => (
             <div key={doc.id} className="p-4 border-b border-[#64c7cd]/20 last:border-b-0 hover:bg-[#64c7cd]/5 transition-colors duration-200">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3">
@@ -507,7 +528,8 @@ export const DocumentManagementPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
 

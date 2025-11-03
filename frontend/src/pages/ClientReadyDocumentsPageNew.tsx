@@ -18,6 +18,7 @@ import {
   Send,
   Trash2
 } from 'lucide-react'
+import JSZip from 'jszip'
 import { useAuth } from '../contexts/AuthContext'
 import { documentApi } from '../services/api'
 
@@ -773,134 +774,185 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   const [uploadedFileNames, setUploadedFileNames] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Group documents into folders by upload time
+  // Group documents into folders by upload batch (gap detection approach)
+  // Each upload batch creates a new folder. A gap of more than 10 seconds between consecutive documents indicates a new batch
   const groupDocumentsIntoFolders = (documents: ReadyDocument[]): DocumentFolder[] => {
     if (!documents || documents.length === 0) return []
 
-    const folderMap = new Map<string, ReadyDocument[]>()
+    // Sort documents by timestamp
+    const sortedDocs = [...documents].sort((a, b) => 
+      new Date(a.readyAtUtc).getTime() - new Date(b.readyAtUtc).getTime()
+    )
 
-    documents.forEach(doc => {
-      const docDate = new Date(doc.readyAtUtc)
-      // Group by second to avoid collapsing multiple uploads in the same minute
-      const secondKey = `${docDate.getFullYear()}-${String(docDate.getMonth() + 1).padStart(2, '0')}-${String(docDate.getDate()).padStart(2, '0')} ${String(docDate.getHours()).padStart(2, '0')}:${String(docDate.getMinutes()).padStart(2, '0')}:${String(docDate.getSeconds()).padStart(2, '0')}`
+    const folders: DocumentFolder[] = []
+    const GAP_THRESHOLD_MS = 5000 // 5 seconds - if gap between consecutive docs > 5s, it's a new batch
 
-      if (!folderMap.has(secondKey)) {
-        folderMap.set(secondKey, [])
+    let currentBatch: ReadyDocument[] = []
+
+    sortedDocs.forEach((doc) => {
+      const docTime = new Date(doc.readyAtUtc).getTime()
+
+      if (currentBatch.length === 0) {
+        // First document in a new batch
+        currentBatch = [doc]
+      } else {
+        // Check the gap between the last document in current batch and this document
+        const lastDocTime = new Date(currentBatch[currentBatch.length - 1].readyAtUtc).getTime()
+        const gap = docTime - lastDocTime
+
+        if (gap > GAP_THRESHOLD_MS) {
+          // Significant gap detected - save current batch and start a new one
+          const uploadDateTime = new Date(currentBatch[0].readyAtUtc)
+          const formattedName = `${String(uploadDateTime.getDate()).padStart(2, '0')}/${String(uploadDateTime.getMonth() + 1).padStart(2, '0')}/${uploadDateTime.getFullYear()} ${String(uploadDateTime.getHours()).padStart(2, '0')}:${String(uploadDateTime.getMinutes()).padStart(2, '0')}:${String(uploadDateTime.getSeconds()).padStart(2, '0')}`
+          
+          // Create stable folder ID based on first document ID and timestamp
+          // This ensures the same folder always gets the same ID even after re-grouping
+          const folderId = `folder-${currentBatch[0].id}-${uploadDateTime.getTime()}`
+          
+          folders.push({
+            id: folderId,
+            folderName: formattedName,
+            uploadDateTime,
+            documents: currentBatch,
+            documentCount: currentBatch.length
+          })
+
+          // Start new batch
+          currentBatch = [doc]
+        } else {
+          // Small gap - add to current batch
+          currentBatch.push(doc)
+        }
       }
-      folderMap.get(secondKey)!.push(doc)
     })
 
-    const folders: DocumentFolder[] = Array.from(folderMap.entries()).map(([folderName, docs], index) => {
-      const uploadDateTime = new Date(docs[0].readyAtUtc)
-      // Format folder name: "DD/MM/YYYY HH:MM:SS"
+    // Don't forget the last batch
+    if (currentBatch.length > 0) {
+      const uploadDateTime = new Date(currentBatch[0].readyAtUtc)
       const formattedName = `${String(uploadDateTime.getDate()).padStart(2, '0')}/${String(uploadDateTime.getMonth() + 1).padStart(2, '0')}/${uploadDateTime.getFullYear()} ${String(uploadDateTime.getHours()).padStart(2, '0')}:${String(uploadDateTime.getMinutes()).padStart(2, '0')}:${String(uploadDateTime.getSeconds()).padStart(2, '0')}`
-
-      return {
-        id: `folder-${index}-${folderName}`,
+      
+      // Create stable folder ID based on first document ID and timestamp
+      // This ensures the same folder always gets the same ID even after re-grouping
+      const folderId = `folder-${currentBatch[0].id}-${uploadDateTime.getTime()}`
+      
+      folders.push({
+        id: folderId,
         folderName: formattedName,
         uploadDateTime,
-        documents: docs.sort((a, b) => new Date(b.readyAtUtc).getTime() - new Date(a.readyAtUtc).getTime()),
-        documentCount: docs.length
-      }
-    })
+        documents: currentBatch,
+        documentCount: currentBatch.length
+      })
+    }
 
+    // Return folders sorted by most recent first
     return folders.sort((a, b) => b.uploadDateTime.getTime() - a.uploadDateTime.getTime())
   }
 
-  // Fetch ready documents
-  const fetchReadyDocuments = async (page: number = pagination.page) => {
+  // Fetch ready documents - fetch ALL documents to properly group into folders
+  const fetchReadyDocuments = async () => {
     try {
       setLoading(true)
-      console.log('Fetching ready documents from:', 'http://localhost:5000/api/documents/client/documents/ready')
-      console.log('Pagination - Page:', page, 'PageSize:', pagination.pageSize)
+      setError(null) // Clear previous errors
 
-      // Debug: Check token and user info
+      // Check if user and token are available
       const token = localStorage.getItem('token')
-      console.log('Token exists:', !!token)
-      console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'No token')
-      console.log('Current user:', user)
-      console.log('User role:', user?.role)
+      if (!token || !user) {
+        console.log('Waiting for authentication...')
+        setLoading(false)
+        return
+      }
 
-      // Debug: Test if user can access any authenticated endpoint
-      try {
-        const testResponse = await fetch('http://localhost:5000/api/auth/me', {
+      // Fetch all documents by using a large pageSize (backend max is 50, so we'll fetch in chunks)
+      let allDocuments: ReadyDocument[] = []
+      let currentPage = 1
+      const fetchPageSize = 50 // Backend max pageSize
+      let hasMore = true
+
+      while (hasMore) {
+        const response = await fetch(`http://localhost:5000/api/documents/client/documents/ready?page=${currentPage}&pageSize=${fetchPageSize}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         })
-        console.log('Auth test response status:', testResponse.status)
-        if (testResponse.ok) {
-          const userData = await testResponse.json()
-          console.log('User data from backend:', userData)
-        } else {
-          const errorText = await testResponse.text()
-          console.log('Auth test error:', errorText)
+
+        if (!response.ok) {
+          // Handle authentication errors
+          if (response.status === 401 || response.status === 403) {
+            setError(null) // Don't show error for auth issues, let ProtectedRoute handle it
+            setLoading(false)
+            return
+          }
+          
+          // Handle other errors
+          const errorText = await response.text()
+          console.error('Response error:', errorText)
+          // Only set error for unexpected errors, not for empty results
+          if (response.status !== 404) {
+            setError('Error al cargar los documentos')
+          } else {
+            // 404 or empty results is normal for new users
+            setError(null)
+          }
+          setLoading(false)
+          return
         }
-      } catch (err) {
-        console.log('Auth test failed:', err)
+
+        const data = await response.json()
+        const documents = Array.isArray(data.items) ? data.items : []
+        
+        if (documents.length > 0) {
+          allDocuments = [...allDocuments, ...documents]
+        }
+
+        // Check if there are more pages
+        hasMore = data.hasNextPage || false
+        currentPage++
+        
+        // Safety limit to prevent infinite loops
+        if (currentPage > 1000) {
+          console.warn('Reached maximum page limit')
+          break
+        }
       }
 
-      const response = await fetch(`http://localhost:5000/api/documents/client/documents/ready?page=${page}&pageSize=${pagination.pageSize}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      setReadyDocs(allDocuments)
+
+      // Group documents into folders by upload batch (no limit on documents per folder)
+      const groupedFolders = groupDocumentsIntoFolders(allDocuments)
+      
+      // Preserve selected folder IDs for folders that still exist after re-grouping
+      setSelectedFolderIds(prev => {
+        const newFolderIds = new Set(groupedFolders.map(f => f.id))
+        return prev.filter(id => newFolderIds.has(id))
       })
-
-      console.log('Response status:', response.status)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Response error:', errorText)
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      console.log('Received data:', data)
-      console.log('Documents count:', data.items?.length || 0)
-      console.log('Total count:', data.totalCount)
-      console.log('Current page:', data.page)
-      console.log('Total pages:', data.totalPages)
-
-      // Debug individual document data
-      if (Array.isArray(data.items) && data.items.length > 0) {
-        console.log('First document data:', data.items[0])
-        console.log('RFC value:', data.items[0].rfcEmisor)
-        console.log('Periodo value:', data.items[0].periodo)
-        console.log('Monto value:', data.items[0].montoTotalMxn)
-
-        // Test getDisplayValue function
-        console.log('Testing getDisplayValue:')
-        console.log('RFC display:', getDisplayValue(data.items[0].rfcEmisor, "RFC"))
-        console.log('Periodo display:', getDisplayValue(data.items[0].periodo, "PERIODO"))
-        console.log('Monto display:', getDisplayValue(data.items[0].montoTotalMxn, "MONTO"))
-
-        // Check if monto contains the specific pattern
-        console.log('Monto contains [\\s:]*:', data.items[0].montoTotalMxn?.includes('[\\s:]*'))
-        console.log('Monto contains \\$?:', data.items[0].montoTotalMxn?.includes('\\$?'))
-        console.log('Monto contains ([0-9,]+\\.[0-9]{2}):', data.items[0].montoTotalMxn?.includes('([0-9,]+\\.[0-9]{2})'))
-      }
-
-      // Backend returns paginated result with items array
-      const documents = Array.isArray(data.items) ? data.items : []
-      setReadyDocs(documents)
-
-      // Group documents into folders by upload time (group by minute)
-      const groupedFolders = groupDocumentsIntoFolders(documents)
+      
       setFolders(groupedFolders)
 
+      // Preserve current page if it's still valid, otherwise reset to page 1
+      const totalPages = Math.ceil(groupedFolders.length / folderPageSize)
+      const preservedPage = pagination.page <= totalPages ? pagination.page : 1
+      
       setPagination({
-        page: data.page || 1,
-        pageSize: data.pageSize || 10,
-        totalCount: data.totalCount || 0,
-        totalPages: data.totalPages || 0,
-        hasNextPage: data.hasNextPage || false,
-        hasPreviousPage: data.hasPreviousPage || false
+        page: preservedPage,
+        pageSize: folderPageSize,
+        totalCount: groupedFolders.length,
+        totalPages: totalPages,
+        hasNextPage: preservedPage < totalPages,
+        hasPreviousPage: preservedPage > 1
       })
+      
+      // Clear any previous errors on success
+      setError(null)
     } catch (error) {
       console.error('Error fetching ready documents:', error)
-      setError('Error al cargar los documentos')
+      // Only set error for actual errors, not for network issues that might be temporary
+      if (error instanceof Error && !error.message.includes('fetch')) {
+        setError('Error al cargar los documentos')
+      } else {
+        // Network or other issues - don't show error, just log
+        setError(null)
+      }
     } finally {
       setLoading(false)
     }
@@ -942,15 +994,12 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     fetchDocumentDetail()
   }, [selectedDocId, drawerOpen])
 
-  // Initial fetch on mount
+  // Initial fetch on mount - wait for user/auth to be ready
   useEffect(() => {
-    fetchReadyDocuments()
-  }, [])
-
-  // Clear selection when page changes
-  useEffect(() => {
-    setSelectedFolderIds([])
-  }, [pagination.page])
+    if (user) {
+      fetchReadyDocuments()
+    }
+  }, [user])
 
   // Prevent body scroll when folder modal is open
   useEffect(() => {
@@ -1088,11 +1137,27 @@ export const ClientReadyDocumentsPage: React.FC = () => {
           showFeedback('info', 'Sin documentos', 'La carpeta actual no contiene documentos para descargar.')
           return
         }
-        const blob = await documentApi.downloadBatch(documentIds)
+        
+        // Create ZIP with folder structure
+        const zip = new JSZip()
+        const folderName = selectedFolder.folderName.replace(/\//g, '-').replace(/\s/g, '_')
+        
+        // Download each document and add to folder in ZIP
+        for (const docId of documentIds) {
+          try {
+            const blob = await documentApi.download(docId)
+            const fileName = `documento_${docId}.pdf`
+            zip.file(`${folderName}/${fileName}`, blob)
+          } catch (error) {
+            console.error(`Error downloading document ${docId}:`, error)
+          }
+        }
+        
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
         const ts = new Date()
         const dateStr = `${ts.getFullYear()}${String(ts.getMonth() + 1).padStart(2, '0')}${String(ts.getDate()).padStart(2, '0')}_${String(ts.getHours()).padStart(2, '0')}${String(ts.getMinutes()).padStart(2, '0')}${String(ts.getSeconds()).padStart(2, '0')}`
-        await triggerDownload(`carpetas_${dateStr}.zip`, blob)
-        showFeedback('success', 'Descarga iniciada', `Se descargará un ZIP con ${documentIds.length} documento(s).`)
+        await triggerDownload(`carpeta_${dateStr}.zip`, zipBlob)
+        showFeedback('success', 'Descarga iniciada', `Se descargará un ZIP con ${documentIds.length} documento(s) en la carpeta "${folderName}".`)
       } catch (error) {
         console.error('Error downloading folder:', error)
         showFeedback('error', 'Error de Descarga', 'No se pudo descargar la carpeta actual.')
@@ -1105,24 +1170,42 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     if (selectedFolderIds.length === 0) return
     setDownloading(true)
     try {
-      // Merge all documents from selected folders into a single ZIP download
-      const documentIdSet = new Set<number>()
-      selectedFolderIds.forEach(folderId => {
+      // Create ZIP with separate folders for each selected folder
+      const zip = new JSZip()
+      let totalDocs = 0
+      
+      // Process each selected folder
+      for (const folderId of selectedFolderIds) {
         const folder = folders.find(f => f.id === folderId)
-        if (!folder) return
-        folder.documents.forEach(doc => documentIdSet.add(Number(doc.id)))
-      })
-      const mergedIds = Array.from(documentIdSet)
-      if (mergedIds.length === 0) {
+        if (!folder || folder.documents.length === 0) continue
+        
+        // Sanitize folder name for file system
+        const folderName = folder.folderName.replace(/\//g, '-').replace(/\s/g, '_')
+        
+        // Download each document in this folder and add to ZIP
+        for (const doc of folder.documents) {
+          try {
+            const docId = Number(doc.id)
+            const blob = await documentApi.download(docId)
+            const fileName = `documento_${docId}.pdf`
+            zip.file(`${folderName}/${fileName}`, blob)
+            totalDocs++
+          } catch (error) {
+            console.error(`Error downloading document ${doc.id}:`, error)
+          }
+        }
+      }
+      
+      if (totalDocs === 0) {
         showFeedback('info', 'Sin documentos', 'Las carpetas seleccionadas no contienen documentos para descargar.')
         return
       }
 
-      const blob = await documentApi.downloadBatch(mergedIds)
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
       const ts = new Date()
       const dateStr = `${ts.getFullYear()}${String(ts.getMonth() + 1).padStart(2, '0')}${String(ts.getDate()).padStart(2, '0')}_${String(ts.getHours()).padStart(2, '0')}${String(ts.getMinutes()).padStart(2, '0')}${String(ts.getSeconds()).padStart(2, '0')}`
-      await triggerDownload(`carpetas_${dateStr}.zip`, blob)
-      showFeedback('success', 'Descarga iniciada', `Se descargará un ZIP con ${mergedIds.length} documento(s) de ${selectedFolderIds.length} carpeta(s).`)
+      await triggerDownload(`carpetas_${dateStr}.zip`, zipBlob)
+      showFeedback('success', 'Descarga iniciada', `Se descargará un ZIP con ${totalDocs} documento(s) en ${selectedFolderIds.length} carpeta(s) separada(s).`)
     } catch (error) {
       console.error('Merged batch download failed:', error)
       showFeedback('error', 'Error de Descarga', 'No fue posible descargar las carpetas seleccionadas.')
@@ -1270,10 +1353,14 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     }
   }
 
-  if (loading) {
+  // Show loading while waiting for user/auth or while fetching
+  if (loading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#64c7cd] border-t-transparent"></div>
+          <p className="text-black/60">Cargando...</p>
+        </div>
       </div>
     )
   }
@@ -1777,59 +1864,73 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   ) : (
                     <div className="p-4 sm:p-6">
                       {/* Select All Header */}
-                      <div className="flex items-center justify-end mb-4">
-                        <button
-                          onClick={handleSelectAllFolders}
-                          className="flex items-center space-x-2 px-3 py-2 text-xs font-medium text-black bg-white border border-[#64c7cd]/40 rounded-lg hover:bg-gray-50 hover:shadow-lg transition-all duration-300"
-                        >
-                          <CheckSquare
-                            className={`h-4 w-4 transition-colors ${selectedFolderIds.length === folders.length && folders.length > 0
-                                ? 'text-[#eb3089] fill-current'
-                                : 'text-black/40'
-                              }`}
-                          />
-                          <span>Seleccionar Todas</span>
-                        </button>
-                      </div>
+                      {folders.length > 0 && (
+                        <div className="flex items-center justify-end mb-4">
+                          <button
+                            onClick={handleSelectAllFolders}
+                            className="flex items-center space-x-2 px-3 py-2 text-xs font-medium text-black bg-white border border-[#64c7cd]/40 rounded-lg hover:bg-gray-50 hover:shadow-lg transition-all duration-300"
+                          >
+                            <CheckSquare
+                              className={`h-4 w-4 transition-colors ${selectedFolderIds.length === folders.length && folders.length > 0
+                                  ? 'text-[#eb3089] fill-current'
+                                  : 'text-black/40'
+                                }`}
+                            />
+                            <span>Seleccionar Todas</span>
+                          </button>
+                        </div>
+                      )}
 
                       {/* Folder Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
-                        {folders.map((folder) => (
-                          <FolderCard
-                            key={folder.id}
-                            folder={folder}
-                            onFolderClick={handleFolderClick}
-                            onSelect={handleToggleFolderSelect}
-                            isSelected={selectedFolderIds.includes(folder.id)}
-                          />
-                        ))}
-                      </div>
+                      {folders.length === 0 ? (
+                        <div className="p-12 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <FileText className="h-16 w-16 text-gray-400 mb-4" />
+                            <p className="text-lg font-medium text-black mb-1">No hay documentos</p>
+                            <p className="text-sm text-black/60">Aún no has subido ningún documento</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+                          {folders
+                            .slice((pagination.page - 1) * folderPageSize, pagination.page * folderPageSize)
+                            .map((folder) => (
+                            <FolderCard
+                              key={folder.id}
+                              folder={folder}
+                              onFolderClick={handleFolderClick}
+                              onSelect={handleToggleFolderSelect}
+                              isSelected={selectedFolderIds.includes(folder.id)}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Pagination Controls */}
-                  {pagination.totalPages > 1 && (
+                  {/* Pagination Controls - For Folders */}
+                  {Math.ceil(folders.length / folderPageSize) > 1 && (
                     <div className="relative z-10 px-3 sm:px-6 py-3 sm:py-4 border-t border-[#64c7cd]/40 bg-gray-50">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <span className="text-xs text-black/70">
-                            Página {pagination.page} de {pagination.totalPages}
+                            Página {pagination.page} de {Math.ceil(folders.length / folderPageSize)}
                           </span>
                           <span className="text-xs text-black/50">
-                            ({folders.length} carpeta{folders.length !== 1 ? 's' : ''} en esta página)
+                            ({Math.min(folderPageSize, folders.length - (pagination.page - 1) * folderPageSize)} de {folders.length} carpeta{folders.length !== 1 ? 's' : ''})
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => fetchReadyDocuments(pagination.page - 1)}
-                            disabled={!pagination.hasPreviousPage}
+                            onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                            disabled={pagination.page === 1}
                             className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
                           >
                             <ChevronLeft className="h-3 w-3" /> <span>Anterior</span>
                           </button>
                           <button
-                            onClick={() => fetchReadyDocuments(pagination.page + 1)}
-                            disabled={!pagination.hasNextPage}
+                            onClick={() => setPagination(prev => ({ ...prev, page: Math.min(Math.ceil(folders.length / folderPageSize), prev.page + 1) }))}
+                            disabled={pagination.page >= Math.ceil(folders.length / folderPageSize)}
                             className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
                           >
                             <span>Siguiente</span> <ChevronRight className="h-3 w-3" />

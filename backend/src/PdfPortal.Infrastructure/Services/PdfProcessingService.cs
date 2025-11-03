@@ -1,98 +1,156 @@
-using iText.Kernel.Pdf;
-using iText.Layout;
-using iText.Layout.Element;
 using Microsoft.AspNetCore.Hosting;
 using PdfPortal.Application.Interfaces;
 using PdfPortal.Application.Models;
+using PdfPortal.WinFormsProcessor;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace PdfPortal.Infrastructure.Services;
 
 public class PdfProcessingService : IPdfProcessingService
 {
     private readonly IWebHostEnvironment _environment;
+    private readonly PdfProcessor _winFormsProcessor;
 
     public PdfProcessingService(IWebHostEnvironment environment)
     {
         _environment = environment;
+        _winFormsProcessor = new PdfProcessor();
+        
+        Console.WriteLine("[PdfProcessingService] Initialized with WinForms PDF Processor");
     }
 
     public async Task<string> ProcessPdfAsync(string inputPdfPath, string templateJsonDefinition)
     {
-        var outputPath = Path.Combine(_environment.WebRootPath, "processed", $"{Guid.NewGuid()}.pdf");
-        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-
-        using var inputStream = new FileStream(inputPdfPath, FileMode.Open);
-        using var outputStream = new FileStream(outputPath, FileMode.Create);
-        
-        var pdfReader = new PdfReader(inputStream);
-        var pdfWriter = new PdfWriter(outputStream);
-        var pdfDocument = new PdfDocument(pdfReader, pdfWriter);
-        var document = new Document(pdfDocument);
-
-        // Basic processing - in a real implementation, this would apply template rules
-        var template = JsonSerializer.Deserialize<Dictionary<string, object>>(templateJsonDefinition);
-        
-        // Add a simple header based on template
-        if (template?.ContainsKey("header") == true)
+        try
         {
-            var header = new Paragraph(template["header"].ToString())
-                .SetTextAlignment(iText.Layout.Properties.TextAlignment.CENTER)
-                .SetFontSize(16);
-            document.Add(header);
+            Console.WriteLine($"[PdfProcessingService] Processing PDF: {inputPdfPath}");
+            
+            // Read PDF bytes
+            var pdfBytes = await File.ReadAllBytesAsync(inputPdfPath);
+            var fileName = Path.GetFileName(inputPdfPath);
+            
+            // Process using WinForms processor
+            var result = await _winFormsProcessor.ProcessPdfAsync(pdfBytes, fileName);
+            
+            if (!result.Success)
+            {
+                Console.WriteLine($"[PdfProcessingService] Processing failed: {result.ErrorMessage}");
+                throw new Exception($"PDF processing failed: {result.ErrorMessage}");
+            }
+
+            Console.WriteLine($"[PdfProcessingService] Processing successful. Confidence: {result.ConfidenceScore}%");
+            
+            // Save processed PDF
+            var outputPath = Path.Combine(
+                _environment.ContentRootPath, 
+                "storage", 
+                "processed", 
+                $"{Guid.NewGuid()}.pdf"
+            );
+            
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            
+            if (result.ProcessedPdfBytes != null)
+            {
+                await File.WriteAllBytesAsync(outputPath, result.ProcessedPdfBytes);
+            }
+
+            return outputPath;
         }
-
-        document.Close();
-        pdfDocument.Close();
-
-        return outputPath;
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PdfProcessingService] Error: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<Dictionary<string, object>> ExtractDataFromPdfAsync(string pdfPath)
     {
-        var extractedData = new Dictionary<string, object>();
-
-        using var inputStream = new FileStream(pdfPath, FileMode.Open);
-        var pdfReader = new PdfReader(inputStream);
-        var pdfDocument = new PdfDocument(pdfReader);
-
-        // Basic extraction - in a real implementation, this would use more sophisticated extraction
-        var numberOfPages = pdfDocument.GetNumberOfPages();
-        extractedData["pageCount"] = numberOfPages;
-        extractedData["extractedAt"] = DateTime.UtcNow;
-        extractedData["fileName"] = Path.GetFileName(pdfPath);
-
-        // Extract text from first page as example
-        var text = "";
-        for (int i = 1; i <= Math.Min(numberOfPages, 1); i++)
+        try
         {
-            var page = pdfDocument.GetPage(i);
-            // This is a simplified extraction - real implementation would be more sophisticated
-            text += $"Page {i} content extracted";
+            Console.WriteLine($"[PdfProcessingService] Extracting data from: {pdfPath}");
+            
+            // Read PDF bytes
+            var pdfBytes = await File.ReadAllBytesAsync(pdfPath);
+            var fileName = Path.GetFileName(pdfPath);
+            
+            // Process using WinForms processor
+            var result = await _winFormsProcessor.ProcessPdfAsync(pdfBytes, fileName);
+            
+            if (!result.Success)
+            {
+                Console.WriteLine($"[PdfProcessingService] Extraction failed: {result.ErrorMessage}");
+                // Return minimal data if processing fails
+                return new Dictionary<string, object>
+                {
+                    ["RFC"] = "Error en procesamiento",
+                    ["periodo"] = "Error en procesamiento",
+                    ["monto_total"] = "0.00",
+                    ["error"] = result.ErrorMessage ?? "Unknown error",
+                    ["success"] = false
+                };
+            }
+
+            Console.WriteLine($"[PdfProcessingService] Extraction successful");
+            Console.WriteLine($"  RFC: {result.ExtractedData.GetValueOrDefault("RFC", "N/A")}");
+            Console.WriteLine($"  Periodo: {result.ExtractedData.GetValueOrDefault("periodo", "N/A")}");
+            Console.WriteLine($"  Monto: {result.ExtractedData.GetValueOrDefault("monto_total", "N/A")}");
+            
+            // Return extracted data
+            var extractedData = new Dictionary<string, object>(result.ExtractedData)
+            {
+                ["success"] = true,
+                ["extractedAt"] = DateTime.UtcNow,
+                ["fileName"] = fileName
+            };
+
+            return extractedData;
         }
-        extractedData["extractedText"] = text;
-
-        pdfDocument.Close();
-
-        return extractedData;
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PdfProcessingService] Error extracting data: {ex.Message}");
+            return new Dictionary<string, object>
+            {
+                ["RFC"] = "Error en procesamiento",
+                ["periodo"] = "Error en procesamiento",
+                ["monto_total"] = "0.00",
+                ["error"] = ex.Message,
+                ["success"] = false
+            };
+        }
     }
 
     public async Task<bool> ValidatePdfAsync(string pdfPath)
     {
         try
         {
-            using var inputStream = new FileStream(pdfPath, FileMode.Open);
-            var pdfReader = new PdfReader(inputStream);
-            var pdfDocument = new PdfDocument(pdfReader);
+            Console.WriteLine($"[PdfProcessingService] Validating PDF: {pdfPath}");
             
-            var isValid = pdfDocument.GetNumberOfPages() > 0;
-            pdfDocument.Close();
+            if (!File.Exists(pdfPath))
+            {
+                Console.WriteLine($"[PdfProcessingService] File not found");
+                return false;
+            }
+
+            var pdfBytes = await File.ReadAllBytesAsync(pdfPath);
+            
+            if (pdfBytes.Length == 0)
+            {
+                Console.WriteLine($"[PdfProcessingService] File is empty");
+                return false;
+            }
+
+            // Use WinForms processor to validate
+            var metadata = _winFormsProcessor.GetMetadata(pdfBytes);
+            var isValid = metadata.PageCount > 0;
+            
+            Console.WriteLine($"[PdfProcessingService] Validation result: {isValid} (Pages: {metadata.PageCount})");
             
             return isValid;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[PdfProcessingService] Validation error: {ex.Message}");
             return false;
         }
     }
