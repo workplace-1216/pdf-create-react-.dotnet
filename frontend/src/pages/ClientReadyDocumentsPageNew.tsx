@@ -11,7 +11,6 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
-  Layers,
   Database,
   CheckSquare,
   LogOut,
@@ -41,18 +40,6 @@ interface DocumentFolder {
   documents: ReadyDocument[]
   documentCount: number
 }
-
-interface DocumentDetail {
-  id: string
-  fiscalData: {
-    rfcEmisor: string
-    periodo: string
-    montoTotalMxn: string  // Backend returns as string
-  }
-  proveedorEmail: string
-  readyAtUtc: string
-}
-
 
 // Modern Folder Component with SVG
 const FolderCard: React.FC<{
@@ -212,433 +199,7 @@ const FolderCard: React.FC<{
   )
 }
 
-// Page-based Compliance Verification Drawer
-const TransformationDrawer: React.FC<{
-  isOpen: boolean
-  onClose: () => void
-  document: DocumentDetail | null
-  loading: boolean
-  onDownload: (documentId: string) => void
-  getDisplayValue: (value: string, type: string) => string
-}> = ({ isOpen, onClose, document, loading, onDownload, getDisplayValue }) => {
-  const [currentPage, setCurrentPage] = useState(0)
-  const [isVisible, setIsVisible] = useState(false)
-
-  // Handle animation states
-  React.useEffect(() => {
-    if (isOpen) {
-      setIsVisible(true)
-    } else {
-      const timer = setTimeout(() => setIsVisible(false), 300) // Match transition duration
-      return () => clearTimeout(timer)
-    }
-  }, [isOpen])
-
-  // Prevent body scroll when modal is open
-  React.useEffect(() => {
-    if (isOpen) {
-      // Save the current scroll position
-      const scrollY = window.scrollY
-      const body = window.document.body
-      // Apply styles to prevent scrolling
-      body.style.position = 'fixed'
-      body.style.top = `-${scrollY}px`
-      body.style.width = '100%'
-      body.style.overflow = 'hidden'
-
-      return () => {
-        // Restore scroll position and remove styles
-        body.style.position = ''
-        body.style.top = ''
-        body.style.width = ''
-        body.style.overflow = ''
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isOpen])
-
-  if (!isVisible) return null
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Animated Backdrop */}
-      <div
-        className={`absolute inset-0 bg-gradient-to-br from-black/60 via-slate-900/50 to-black/60 backdrop-blur-sm transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-        onClick={onClose}
-      />
-
-      {/* Compact Drawer */}
-      <div className={`fixed top-0 right-0 h-full w-full max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20 flex flex-col transition-all duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-        {/* Header with Gradient and Navigation */}
-        <div className="relative bg-[#64c7cd] p-4 sm:p-6">
-          <div className="absolute inset-0 bg-[#64c7cd]"></div>
-          <div className="relative">
-            {/* Top Row - Title and Close */}
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg">
-                  <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">
-                    Verificación de Cumplimiento
-                  </h3>
-                  <p className="text-white/80 text-xs sm:text-sm">
-                    {document?.fiscalData.rfcEmisor || 'Cargando...'} - {document?.fiscalData.periodo || ''}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200"
-              >
-                <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-              </button>
-            </div>
-
-            {/* Bottom Row - Navigation */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="text-xs sm:text-sm text-white/80">
-                  Sección {currentPage + 1} de 4
-                </span>
-                <div className="flex space-x-1">
-                  {[0, 1, 2, 3].map((page) => (
-                    <div
-                      key={page}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${currentPage === page
-                        ? 'bg-white'
-                        : 'bg-white/40'
-                        }`}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                  disabled={currentPage === 0}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
-                >
-                  <ChevronLeft className="h-3 w-3" />
-                  <span className="hidden sm:inline">Anterior</span>
-                </button>
-                <button
-                  onClick={() => setCurrentPage(Math.min(3, currentPage + 1))}
-                  disabled={currentPage === 3}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-[#64c7cd] border border-[#64c7cd]/40 rounded-lg hover:bg-[#64c7cd]/80 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center space-x-1"
-                >
-                  <span className="hidden sm:inline">Siguiente</span>
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto bg-gray-50">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="flex flex-col items-center space-y-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-[#64c7cd] rounded-full blur-lg opacity-75"></div>
-                  <div className="relative animate-spin rounded-full h-12 w-12 border-4 border-[#64c7cd] border-t-transparent"></div>
-                </div>
-                <p className="text-lg font-medium text-black">Cargando detalles del documento...</p>
-              </div>
-            </div>
-          ) : document ? (
-            <div className="p-6 space-y-6">
-              {/* Section 1: Datos Extraídos - Optimized */}
-              {currentPage === 0 && (
-                <div className="bg-white rounded-2xl shadow-xl hover:shadow-2xl border border-[#64c7cd]/40 p-2 sm:p-3 mb-3 sm:mb-6 relative overflow-auto group transition-all duration-500">
-                  <div className="relative z-10">
-                    <div className="flex items-center mb-4 sm:mb-6">
-                      <div className="relative">
-                        <div className="p-2 sm:p-3 bg-[#64c7cd] rounded-2xl shadow-2xl">
-                          <Upload className="h-6 w-6 text-white" />
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-lg sm:text-xl font-bold text-black">1. Datos Extraídos</h4>
-                        <p className="text-xs sm:text-sm text-black/70">Información fiscal identificada del PDF</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">RFC Emisor</label>
-                        <p className="text-sm sm:text-base font-mono text-black mt-1">{getDisplayValue(document.fiscalData.rfcEmisor, 'RFC')}</p>
-                      </div>
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Período</label>
-                        <p className="text-sm sm:text-base text-black mt-1">{getDisplayValue(document.fiscalData.periodo, 'PERIODO')}</p>
-                      </div>
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Monto Total (MXN)</label>
-                        <p className="text-sm sm:text-base text-black mt-1">{getDisplayValue(document.fiscalData.montoTotalMxn, 'MONTO')}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Section 2: Estructura del Documento - Optimized */}
-              {currentPage === 1 && (
-                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-4 sm:p-6 relative overflow-hidden group hover:shadow-2xl hover:scale-[101%] transition-all duration-500">
-
-                  <div className="relative z-10">
-                    <div className="flex items-center mb-4 sm:mb-6">
-                      <div className="relative">
-                        <div className="p-2 sm:p-3 bg-[#a5cc55] rounded-xl sm:rounded-2xl shadow-2xl">
-                          <Layers className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                        </div>
-                      </div>
-                      <div className="ml-3 sm:ml-4">
-                        <h4 className="text-lg sm:text-xl font-bold text-black">2. Estructura del Documento</h4>
-                        <p className="text-xs sm:text-sm text-black/70">Modificaciones aplicadas al layout físico</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3 sm:space-y-4">
-                      <div>
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Páginas Incluidas en la Versión Final</label>
-                        <p className="text-sm sm:text-base text-black mt-1">Portada estandarizada + Página 1 del documento original + Resumen</p>
-                        <p className="text-xs sm:text-sm text-black/60 mt-1">Se eliminaron 2 páginas adicionales no requeridas</p>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2 sm:mr-3" />
-                          <span className="text-xs sm:text-sm text-black">Carátula estándar añadida</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2 sm:mr-3" />
-                          <span className="text-xs sm:text-sm text-black">Pie de página con trazabilidad</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2 sm:mr-3" />
-                          <span className="text-xs sm:text-sm text-black">Formularios interactivos eliminados</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2 sm:mr-3" />
-                          <span className="text-xs sm:text-sm text-black">JavaScript/adjuntos eliminados</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Section 3: Metadatos Aplicados - Optimized */}
-              {currentPage === 2 && (
-                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-4 sm:p-6 relative overflow-hidden group hover:shadow-2xl hover:scale-[101%] transition-all duration-500">
-
-                  <div className="relative z-10">
-                    <div className="flex items-center mb-4 sm:mb-6">
-                      <div className="relative">
-                        <div className="p-2 sm:p-3 bg-[#eb3089] rounded-xl sm:rounded-2xl shadow-2xl">
-                          <Database className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                        </div>
-                      </div>
-                      <div className="ml-3 sm:ml-4">
-                        <h4 className="text-lg sm:text-xl font-bold text-black">3. Metadatos Aplicados</h4>
-                        <p className="text-xs sm:text-sm text-black/70">Campos estandarizados escritos en el PDF</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Título</label>
-                        <p className="text-sm sm:text-base text-black mt-1">Factura Maquila Normalizada</p>
-                      </div>
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Autora / Proveedor</label>
-                        <p className="text-sm sm:text-base text-black mt-1">{document.proveedorEmail}</p>
-                      </div>
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">RFC_Emisor (embebido)</label>
-                        <p className="text-sm sm:text-base font-mono text-black mt-1">{document.fiscalData.rfcEmisor}</p>
-                      </div>
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Período (embebido)</label>
-                        <p className="text-sm sm:text-base text-black mt-1">{document.fiscalData.periodo}</p>
-                      </div>
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Fecha de Normalización UTC</label>
-                        <p className="text-sm sm:text-base text-black mt-1">{new Date(document.readyAtUtc).toLocaleString('es-MX')}</p>
-                      </div>
-                      <div className="bg-gray-50 border border-[#64c7cd]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                        <label className="text-xs font-medium text-black/70 uppercase tracking-wider">Sistema Generador</label>
-                        <p className="text-sm sm:text-base text-black mt-1">PDF Portal v1.0 - Sello Interno</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Section 4: Cumplimiento Técnico de Formato - Optimized */}
-              {currentPage === 3 && (
-                <div className="bg-white rounded-2xl shadow-xl border border-[#64c7cd]/40 p-4 sm:p-6 relative overflow-hidden group hover:shadow-2xl hover:scale-[101%] transition-all duration-500">
-
-                  <div className="relative z-10">
-                    <div className="flex items-center mb-4 sm:mb-6">
-                      <div className="relative">
-                        <div className="p-2 sm:p-3 bg-[#64c7cd] rounded-xl sm:rounded-2xl shadow-2xl">
-                          <CheckSquare className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                        </div>
-                      </div>
-                      <div className="ml-3 sm:ml-4">
-                        <h4 className="text-lg sm:text-xl font-bold text-black">4. Cumplimiento Técnico de Formato</h4>
-                        <p className="text-xs sm:text-sm text-black/70">Verificación para sistemas gubernamentales</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2 sm:space-y-3">
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-black">Archivo es PDF válido</span>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
-                          <span className="text-xs text-[#a5cc55]">Cumple</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-black">Escala de grises 8 bits</span>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#0aff00] mr-2" />
-                          <span className="text-xs text-[#0aff00]">Cumple</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-black">Resolución 300 DPI</span>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
-                          <span className="text-xs text-[#a5cc55]">Cumple</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-black">Tamaño ≤ 3 MB</span>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
-                          <span className="text-xs text-[#a5cc55]">Cumple</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-black">Sin formularios interactivos</span>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
-                          <span className="text-xs text-[#a5cc55]">Cumple</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-black">Sin JavaScript incrustado</span>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
-                          <span className="text-xs text-[#a5cc55]">Cumple</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 border-b border-[#64c7cd]/20 hover:bg-gray-50 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-black">Sin contraseñas</span>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
-                          <span className="text-xs text-[#a5cc55]">Cumple</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between py-2 sm:py-3 hover:bg-gray-50 transition-colors duration-200">
-                        <span className="text-xs sm:text-sm text-black">Metadatos obligatorios presentes</span>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#a5cc55] mr-2" />
-                          <span className="text-xs text-[#a5cc55]">Cumple</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-black/70">No se pudo cargar la información del documento</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer with Download Actions */}
-        <div className="border-t border-[#64c7cd]/40 p-6 py-4 bg-[#64c7cd]">
-          <div className="flex justify-between items-center">
-            <div className="text-sm lg:block hidden text-white/90 w-1/2">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="relative">
-                  <div className="absolute inset-0 w-3 h-3 bg-[#a5cc55] rounded-full animate-ping opacity-30"></div>
-                </div>
-                <p className="font-semibold text-white">Documento verificado y listo para envío</p>
-              </div>
-              <p className="text-xs text-white/80">Todas las transformaciones aplicadas exitosamente</p>
-            </div>
-            <div className="flex space-x-2 sm:space-x-3 justify-end w-full">
-              <button
-                onClick={() => {
-                  if (document) {
-                    onDownload(document.id)
-                  }
-                }}
-                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-[#a5cc55] border border-transparent rounded-xl hover:bg-[#a5cc55]/80 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg"
-              >
-                <div className="flex items-center space-x-2">
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Descargar PDF Final</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  if (document) {
-                    const data = {
-                      rfc: document.fiscalData.rfcEmisor,
-                      periodo: document.fiscalData.periodo,
-                      monto: document.fiscalData.montoTotalMxn,
-                      proveedor: document.proveedorEmail,
-                      fecha: document.readyAtUtc
-                    }
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-                    const url = URL.createObjectURL(blob)
-                    const a = window.document.createElement('a')
-                    a.href = url
-                    a.download = `datos_${document.fiscalData.rfcEmisor}_${document.fiscalData.periodo}.json`
-                    a.click()
-                    URL.revokeObjectURL(url)
-                  }
-                }}
-                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded-xl hover:bg-green-700 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg"
-              >
-                <div className="flex items-center space-x-2">
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">Descargar Datos (JSON)</span>
-                </div>
-              </button>
-
-              <button
-                onClick={async () => {
-                  if (document) {
-                    try {
-                      await documentApi.sendByEmail([Number(document.id)])
-                    } catch (e) {
-                      console.error('Error enviando por correo:', e)
-                    }
-                  }
-                }}
-                className="px-3 sm:px-6 py-2.5 text-sm font-medium text-white bg-[#a15ade] border border-transparent rounded-xl hover:bg-[#a15ade]/80 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg"
-              >
-                <div className="flex items-center space-x-2">
-                  <Send className="h-4 w-4" />
-                  <span className="hidden sm:inline">Enviar</span>
-                </div>
-              </button>
-
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+// TransformationDrawer component removed - replaced with PDF preview modal
 
 // Main Component - Compliance Verification Dashboard
 export const ClientReadyDocumentsPage: React.FC = () => {
@@ -653,12 +214,8 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     hasPreviousPage: false
   })
   const [folders, setFolders] = useState<DocumentFolder[]>([])
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
-  const [selectedDocDetail, setSelectedDocDetail] = useState<DocumentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([])
   const [sending, setSending] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -675,6 +232,12 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   } | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [pendingDeleteFolderIds, setPendingDeleteFolderIds] = useState<string[]>([])
+  // PDF Preview Modal state
+  const [showPdfModal, setShowPdfModal] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+  const [previewDocument, setPreviewDocument] = useState<ReadyDocument | null>(null)
 
   // Helper function to clean up regex patterns and show proper extracted values
   const getDisplayValue = (value: string, type: string) => {
@@ -719,6 +282,57 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
     return value
   }
+
+  // Preview PDF function
+  const handlePreviewDocument = async (doc: ReadyDocument) => {
+    setPreviewDocument(doc)
+    setShowPdfModal(true)
+    setPdfLoading(true)
+    setPdfError(null)
+
+    try {
+      // Clean up previous PDF URL if exists
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl)
+        setPdfUrl(null)
+      }
+
+      // Fetch PDF blob
+      const token = localStorage.getItem('token')
+      if (!token) {
+        throw new Error('No authentication token')
+      }
+
+      const response = await fetch(`http://localhost:5000/api/documents/client/documents/${doc.id}/file`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to load PDF: ${response.status}`)
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      setPdfUrl(url)
+    } catch (error) {
+      console.error('Error loading PDF:', error)
+      setPdfError('No se pudo cargar el PDF. Por favor, intente descargarlo.')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
+  // Cleanup PDF URL when modal closes
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl)
+      }
+    }
+  }, [pdfUrl])
 
   // Download function to properly handle PDF downloads
   const handleDownload = async (documentId: string) => {
@@ -958,42 +572,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     }
   }
 
-  // Fetch document detail
-  useEffect(() => {
-    const fetchDocumentDetail = async () => {
-      if (selectedDocId && drawerOpen) {
-        setDetailLoading(true)
-        try {
-          console.log('🔍 Fetching document detail for ID:', selectedDocId)
-          const response = await fetch(`http://localhost:5000/api/documents/client/documents/${selectedDocId}`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              'Content-Type': 'application/json'
-            }
-          })
-
-          if (response.ok) {
-            const data = await response.json()
-            console.log('🔍 Document detail data:', data)
-            console.log('🔍 Fiscal data:', data.fiscalData)
-            if (data.fiscalData) {
-              console.log('🔍 RFC in detail:', data.fiscalData.rfcEmisor)
-              console.log('🔍 Periodo in detail:', data.fiscalData.periodo)
-              console.log('🔍 Monto in detail:', data.fiscalData.montoTotalMxn)
-            }
-            setSelectedDocDetail(data)
-          }
-        } catch (error) {
-          console.error('Error fetching document detail:', error)
-        } finally {
-          setDetailLoading(false)
-        }
-      }
-    }
-
-    fetchDocumentDetail()
-  }, [selectedDocId, drawerOpen])
-
   // Initial fetch on mount - wait for user/auth to be ready
   useEffect(() => {
     if (user) {
@@ -1027,12 +605,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     setShowFeedbackModal(true)
   }
 
-  const handleCloseDrawer = () => {
-    setDrawerOpen(false)
-    setSelectedDocId(null)
-    setSelectedDocDetail(null)
-  }
-
   // Handle folder selection
   const handleToggleFolderSelect = (folderId: string) => {
     setSelectedFolderIds(prev =>
@@ -1060,9 +632,14 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   // removed unused handleCloseFolderModal
 
   const handleDocumentFromFolderClick = (docId: string) => {
-    setSelectedDocId(docId)
-    setDrawerOpen(true)
-    setShowFolderModal(false) // Close folder modal when opening document (kept for safety)
+    // Find the document from the selected folder and open preview modal
+    if (selectedFolder) {
+      const doc = selectedFolder.documents.find(d => d.id === docId)
+      if (doc) {
+        handlePreviewDocument(doc)
+      }
+    }
+    setShowFolderModal(false) // Close folder modal when opening document
   }
 
   const handleSendSelectedFolders = async () => {
@@ -1817,9 +1394,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                               </div>
                               <div className="flex items-center space-x-2 flex-shrink-0">
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleDocumentFromFolderClick(doc.id) }}
+                                  onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc) }}
                                   className="p-2 text-[#64c7cd] hover:text-[#64c7cd]/80 hover:bg-[#64c7cd]/10 rounded-lg transition-all duration-200"
-                                  title="Ver documento"
+                                  title="Vista previa del PDF"
                                 >
                                   <Eye className="h-4 w-4" />
                                 </button>
@@ -1945,15 +1522,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Transformation Verification Drawer */}
-        <TransformationDrawer
-          isOpen={drawerOpen}
-          onClose={handleCloseDrawer}
-          document={selectedDocDetail}
-          loading={detailLoading}
-          onDownload={handleDownload}
-          getDisplayValue={getDisplayValue}
-        />
 
         {/* Success Modal */}
         {showSuccessModal && (
@@ -2122,6 +1690,109 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                 >
                   {deleting ? 'Eliminando...' : 'Sí, eliminar'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PDF Preview Modal */}
+        {showPdfModal && previewDocument && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                if (pdfUrl) {
+                  URL.revokeObjectURL(pdfUrl)
+                  setPdfUrl(null)
+                }
+                setShowPdfModal(false)
+                setPreviewDocument(null)
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl border border-[#64c7cd]/30 w-full max-w-6xl max-h-[75vh] mt-16 p-4 sm:p-6 relative flex flex-col overflow-hidden">
+              <button
+                onClick={() => {
+                  if (pdfUrl) {
+                    URL.revokeObjectURL(pdfUrl)
+                    setPdfUrl(null)
+                  }
+                  setShowPdfModal(false)
+                  setPreviewDocument(null)
+                }}
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 z-10"
+              >
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-black hover:text-black" />
+              </button>
+
+              {/* Header */}
+              <div className="mb-4 sm:mb-6 pr-8">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-[#64c7cd] rounded-xl">
+                    <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-black">Documento Procesado</h3>
+                    <p className="text-xs sm:text-sm text-black">
+                      RFC: {previewDocument.rfcEmisor} • Período: {getDisplayValue(previewDocument.periodo, 'PERIODO')} • Monto: {getDisplayValue(previewDocument.montoTotalMxn, 'MONTO')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* PDF Viewer */}
+              <div className="flex-1 bg-gray-100 rounded-xl p-4 overflow-hidden border border-gray-300">
+                {pdfLoading ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#64c7cd] mx-auto mb-4"></div>
+                      <p className="text-black">Cargando PDF...</p>
+                    </div>
+                  </div>
+                ) : pdfError ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+                      <p className="text-black mb-2">{pdfError}</p>
+                      <button
+                        onClick={() => previewDocument && handlePreviewDocument(previewDocument)}
+                        className="px-4 py-2 text-sm font-medium text-white bg-[#64c7cd] rounded-xl hover:bg-[#64c7cd]/80 transition-all duration-300"
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  </div>
+                ) : pdfUrl ? (
+                  <iframe
+                    src={pdfUrl}
+                    className="w-full h-full border-0 rounded-lg"
+                    title="PDF Preview"
+                    style={{ minHeight: '500px' }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <p className="text-black mb-2">No se pudo cargar el PDF</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Document Info */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="p-3 bg-white/5 rounded-xl">
+                  <p className="text-xs text-black/60 mb-1">RFC Emisor</p>
+                  <p className="text-sm text-black">{previewDocument.rfcEmisor}</p>
+                </div>
+                <div className="p-3 bg-white/5 rounded-xl">
+                  <p className="text-xs text-black/60 mb-1">Período</p>
+                  <p className="text-sm text-black">{getDisplayValue(previewDocument.periodo, 'PERIODO')}</p>
+                </div>
+                <div className="p-3 bg-white/5 rounded-xl">
+                  <p className="text-xs text-black/60 mb-1">Monto Total</p>
+                  <p className="text-sm text-black">{getDisplayValue(previewDocument.montoTotalMxn, 'MONTO')}</p>
+                </div>
               </div>
             </div>
           </div>

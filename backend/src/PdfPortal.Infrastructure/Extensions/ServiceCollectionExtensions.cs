@@ -24,10 +24,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Services
+        services.AddHttpClient(); // Add HttpClient for GPT service
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPdfProcessingService, PdfProcessingService>();
         services.AddScoped<IPdfStorageService, PdfStorageService>();
         services.AddScoped<ITemplateProcessorService, TemplateProcessorService>();
+        services.AddScoped<IGptService, GptService>();
         services.AddScoped<TemplateRuleParser>();
         services.AddScoped<JwtTokenService>();
         services.AddScoped<PasswordHasherService>();

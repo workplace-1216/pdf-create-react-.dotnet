@@ -28,6 +28,8 @@ public class DocumentProcessed
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public ProcessedDocumentStatus Status { get; set; } = ProcessedDocumentStatus.Pending;
+    
+    public bool IsDeletedByClient { get; set; } = false;
 }
 
 public enum ProcessedDocumentStatus

@@ -21,7 +21,7 @@ public class TemplateProcessorService : ITemplateProcessorService
         Console.WriteLine("[TemplateProcessorService] Initialized with WinForms PDF Processor");
     }
 
-    public async Task<ProcessResult> ProcessAsync(byte[] originalPdfBytes, TemplateRuleDefinition rules, VendorContext vendor)
+    public async Task<ProcessResult> ProcessAsync(byte[] originalPdfBytes, TemplateRuleDefinition rules, VendorContext vendor, string documentTitle = null, Models.GptExtractionResult? gptData = null)
     {
         var result = new ProcessResult
         {
@@ -33,8 +33,15 @@ public class TemplateProcessorService : ITemplateProcessorService
         {
             Console.WriteLine("[TemplateProcessorService] Processing PDF with WinForms processor...");
             
-            // Use WinForms processor for enhanced extraction
-            var winFormsResult = await _winFormsProcessor.ProcessPdfAsync(originalPdfBytes, "document.pdf", vendor?.Email);
+            // Use WinForms processor for enhanced extraction (pass GPT data)
+            var winFormsResult = await _winFormsProcessor.ProcessPdfAsync(
+                originalPdfBytes, 
+                documentTitle ?? "document.pdf", 
+                vendor?.Email,
+                gptData?.Title,
+                gptData?.Summary,
+                gptData?.ContactInformation
+            );
             
             if (winFormsResult.Success)
             {

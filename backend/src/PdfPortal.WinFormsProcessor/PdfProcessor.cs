@@ -28,8 +28,11 @@ public class PdfProcessor
     /// <param name="pdfBytes">PDF file bytes</param>
     /// <param name="fileName">Original file name</param>
     /// <param name="userEmail">Logged-in user's email (optional)</param>
+    /// <param name="gptTitle">Title extracted by GPT (optional)</param>
+    /// <param name="gptSummary">Summary extracted by GPT (optional)</param>
+    /// <param name="gptContactInfo">Contact information extracted by GPT (optional)</param>
     /// <returns>Processing result with extracted data</returns>
-    public PdfProcessingResult ProcessPdf(byte[] pdfBytes, string fileName, string userEmail = null)
+    public PdfProcessingResult ProcessPdf(byte[] pdfBytes, string fileName, string userEmail = null, string gptTitle = null, string gptSummary = null, string gptContactInfo = null)
     {
         var result = new PdfProcessingResult
         {
@@ -79,8 +82,7 @@ public class PdfProcessor
             };
 
             // Process PDF: Add stamps, watermarks, and extracted data
-            Console.WriteLine($"[PdfProcessor] Adding processing stamp to PDF...");
-            result.ProcessedPdfBytes = AddProcessingStamp(pdfBytes, result.FiscalData, result.ConfidenceScore, userEmail);
+            result.ProcessedPdfBytes = AddProcessingStamp(pdfBytes, result.FiscalData, result.ConfidenceScore, userEmail, gptTitle ?? "", gptSummary ?? "", gptContactInfo ?? "");
 
             result.Success = true;
             Console.WriteLine($"[PdfProcessor] Processing completed successfully");
@@ -99,9 +101,9 @@ public class PdfProcessor
     /// <summary>
     /// Process a PDF file asynchronously
     /// </summary>
-    public Task<PdfProcessingResult> ProcessPdfAsync(byte[] pdfBytes, string fileName, string userEmail = null)
+    public Task<PdfProcessingResult> ProcessPdfAsync(byte[] pdfBytes, string fileName, string userEmail = null, string gptTitle = null, string gptSummary = null, string gptContactInfo = null)
     {
-        return Task.Run(() => ProcessPdf(pdfBytes, fileName, userEmail));
+        return Task.Run(() => ProcessPdf(pdfBytes, fileName, userEmail, gptTitle, gptSummary, gptContactInfo));
     }
 
     /// <summary>
@@ -128,7 +130,7 @@ public class PdfProcessor
     /// <summary>
     /// Create a professional form PDF with raw PDF syntax (no iText7 to avoid BouncyCastle)
     /// </summary>
-    private byte[] AddProcessingStamp(byte[] originalPdfBytes, FiscalData fiscalData, int confidenceScore, string userEmail = null)
+    private byte[] AddProcessingStamp(byte[] originalPdfBytes, FiscalData fiscalData, int confidenceScore, string userEmail = null, string gptTitle = null, string gptSummary = null, string gptContactInfo = null)
     {
         Console.WriteLine("[PdfProcessor] Creating professional form PDF using raw PDF syntax");
         
@@ -138,8 +140,17 @@ public class PdfProcessor
             // Green color for "de valor a Vucem": RGB(165,204,85) = 0.647 0.8 0.333
             // Cyan color for box: RGB(100,199,205) = 0.392 0.78 0.804
             
-            // Use provided email or default
-            var displayEmail = userEmail ?? "Clientes@seetrafico24.com.mx";
+            // Use provided email and GPT data
+            var displayEmail = userEmail ?? "";
+            var displayTitle = gptTitle ?? "";
+            var displaySummary = gptSummary ?? "";
+            var displayContactInfo = gptContactInfo ?? "";
+            
+            // Escape special characters for PDF content (will be done in EscapePdfString method)
+            
+            // Split summary and contact info into lines if too long
+            var summaryLines = SplitTextIntoLines(displaySummary, 70);
+            var contactLines = SplitTextIntoLines(displayContactInfo, 70);
             
             var pdfContent = @"%PDF-1.4
 1 0 obj
@@ -237,46 +248,42 @@ endobj
 BT
 /F1 26 Tf
 40 690 Td
-(Transmision de la) Tj
-0 -30 Td
-(manifestacion) Tj
-0.647 0.8 0.333 rg
-0 -30 Td
-(de valor a Vucem) Tj
+(" + EscapePdfString(displayTitle) + @") Tj
 0 0 0 rg
 /F2 12 Tf
-0 -40 Td
-(Contaremos con un invitado especial, para platicar sobre el uso, las) Tj
-0 -14 Td
-(obligaciones legales de la manifestacion de valor y sus implicaciones en) Tj
-0 -14 Td
-(empresa IMMEX. Ademas el cumplimiento a nivel internacional y como va a) Tj
-0 -14 Td
-(funcionar.) Tj
-0 -24 Td
-(Invitado:) Tj
-/F1 20 Tf
-0 -20 Td
-(Issac Vega A.) Tj
-/F2 11 Tf
-0 -25 Td
-(\225 Maestro en Logistica Internacional.) Tj
-0 -12 Td
-(\225 Licenciado en Comercio Internacional y) Tj
-0 -12 Td
-(  Aduanas por la Universidad Iberoamericana.) Tj
-0 -12 Td
-(\225 Especialista en Comercio Internacional y Cumplimiento) Tj
-0 -12 Td
-(  Aduanal con mas de 15 anos de experiencia asesorando) Tj
-0 -12 Td
-(  a empresas como BMW, Audi, Nissan, Sony y Foxconn.) Tj
-0 -12 Td
-(\225 Experto en IMMEX, OEA, C-TPAT y estrategias logisticas) Tj
-0 -12 Td
-(  Mexico-EE. UU.) Tj
-ET
-0.392 0.78 0.804 rg
+0 -40 Td";
+
+            // Add summary lines
+            var currentY = -40;
+            if (summaryLines.Count > 0)
+            {
+                foreach (var line in summaryLines)
+                {
+                    pdfContent += "\n(" + EscapePdfString(line) + ") Tj\n0 -14 Td";
+                    currentY -= 14;
+                }
+            }
+            else
+            {
+                // If no summary, add a default message or leave blank
+                pdfContent += "\n(No hay resumen disponible.) Tj\n0 -14 Td";
+            }
+
+            // Add contact information section
+            if (contactLines.Count > 0)
+            {
+                pdfContent += "\n0 -24 Td\n/F1 16 Tf\n(Informacion de Contacto:) Tj\n/F2 12 Tf\n0 -20 Td";
+                currentY -= 44;
+                
+                foreach (var line in contactLines)
+                {
+                    pdfContent += "\n(" + EscapePdfString(line) + ") Tj\n0 -14 Td";
+                    currentY -= 14;
+                }
+            }
+
+            pdfContent += "\nET\n";
+            pdfContent += @"0.392 0.78 0.804 rg
 190 320 215 30 re
 f
 BT
@@ -417,6 +424,62 @@ startxref
             // Fallback to original
             return originalPdfBytes;
         }
+    }
+
+    /// <summary>
+    /// Split text into lines with maximum character length
+    /// </summary>
+    private List<string> SplitTextIntoLines(string text, int maxCharsPerLine)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return new List<string>();
+        }
+
+        var lines = new List<string>();
+        var words = text.Split(' ');
+        var currentLine = "";
+
+        foreach (var word in words)
+        {
+            if ((currentLine + " " + word).Length <= maxCharsPerLine)
+            {
+                currentLine = string.IsNullOrEmpty(currentLine) ? word : currentLine + " " + word;
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(currentLine))
+                {
+                    lines.Add(currentLine);
+                }
+                currentLine = word;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(currentLine))
+        {
+            lines.Add(currentLine);
+        }
+
+        return lines.Count > 0 ? lines : new List<string> { text };
+    }
+
+    /// <summary>
+    /// Escape special characters for PDF string content
+    /// </summary>
+    private string EscapePdfString(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return "";
+        }
+        
+        return text
+            .Replace("\\", "\\\\")
+            .Replace("(", "\\(")
+            .Replace(")", "\\)")
+            .Replace("\r", "")
+            .Replace("\n", " ");
     }
 }
 

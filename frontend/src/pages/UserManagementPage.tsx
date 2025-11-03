@@ -15,7 +15,9 @@ import {
   AlertCircle,
   Download,
   XCircle,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { adminApi } from '../services/api'
@@ -695,6 +697,71 @@ export const UserManagementPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {totalUsers > pageSize && (
+        <div className="flex items-center justify-between mt-6 bg-white rounded-2xl shadow-2xl border border-[#64c7cd]/30 p-4">
+          <div className="text-sm text-black">
+            Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalUsers)} de {totalUsers} usuarios
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 flex items-center space-x-1 ${
+                currentPage === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#64c7cd] text-white hover:bg-[#64c7cd]/80 hover:scale-105'
+              }`}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Anterior</span>
+            </button>
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, Math.ceil(totalUsers / pageSize)) }, (_, i) => {
+                const totalPages = Math.ceil(totalUsers / pageSize)
+                let pageNum: number
+                
+                if (totalPages <= 5) {
+                  pageNum = i + 1
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i
+                } else {
+                  pageNum = currentPage - 2 + i
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                      currentPage === pageNum
+                        ? 'bg-[#64c7cd] text-white'
+                        : 'bg-white text-black border border-[#64c7cd]/30 hover:bg-[#64c7cd]/10'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalUsers / pageSize), prev + 1))}
+              disabled={currentPage >= Math.ceil(totalUsers / pageSize)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 flex items-center space-x-1 ${
+                currentPage >= Math.ceil(totalUsers / pageSize)
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#64c7cd] text-white hover:bg-[#64c7cd]/80 hover:scale-105'
+              }`}
+            >
+              <span>Siguiente</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add User Modal */}
       {showAddModal && (

@@ -13,10 +13,13 @@ import {
   CheckCircle,
   AlertCircle,
   ChevronDown,
-  XCircle
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+  Trash2
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
-import { adminApi } from '../services/api'
+import { adminApi, documentApi } from '../services/api'
 import type { AdminDocument } from '../types/api'
 
 interface Document {
@@ -39,10 +42,17 @@ export const DocumentManagementPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'All' | 'Procesando' | 'Completado' | 'Error' | 'Pendiente de revisión'>('All')
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [showPdfModal, setShowPdfModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [feedback, setFeedback] = useState<{
+    type: 'success' | 'error' | 'info'
+    title: string
+    message: string
+  } | null>(null)
 
   // Custom Dropdown Component
   const CustomDropdown: React.FC<{
@@ -166,20 +176,71 @@ export const DocumentManagementPage: React.FC = () => {
     }
   }, [pdfUrl])
 
-  const handleDownloadDocument = async (document: Document) => {
+  const handleDownloadDocument = async (doc: Document) => {
     try {
-      const blob = await adminApi.downloadDocument(document.id)
+      const blob = await adminApi.downloadDocument(doc.id)
       const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
+      const link = window.document.createElement('a')
       link.href = url
-      link.download = document.fileName || `document_${document.id}.pdf`
-      document.body.appendChild(link)
+      link.download = doc.fileName || `document_${doc.id}.pdf`
+      window.document.body.appendChild(link)
       link.click()
-      document.body.removeChild(link)
+      window.document.body.removeChild(link)
       URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error downloading PDF:', error)
-      alert('Error al descargar el PDF. Por favor, intente nuevamente.')
+      setFeedback({
+        type: 'error',
+        title: 'Error al Descargar',
+        message: 'Error al descargar el PDF. Por favor, intente nuevamente.'
+      })
+    }
+  }
+
+  const handleDeleteDocument = (document: Document) => {
+    setSelectedDocument(document)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteDocument = async () => {
+    if (!selectedDocument) return
+
+    setIsDeleting(true)
+    try {
+      // Convert string ID to number for API
+      const documentId = parseInt(selectedDocument.id)
+      if (isNaN(documentId)) {
+        setFeedback({
+          type: 'error',
+          title: 'Error',
+          message: 'ID de documento inválido'
+        })
+        return
+      }
+
+      // Use deleteBatch API with single document ID
+      await documentApi.deleteBatch([documentId])
+      
+      // Close modal and refresh documents
+      setShowDeleteModal(false)
+      setSelectedDocument(null)
+      await fetchDocuments()
+      
+      // Show success message
+      setFeedback({
+        type: 'success',
+        title: 'Documento Eliminado',
+        message: 'El documento ha sido eliminado exitosamente.'
+      })
+    } catch (error) {
+      console.error('Error deleting document:', error)
+      setFeedback({
+        type: 'error',
+        title: 'Error al Eliminar',
+        message: 'Error al eliminar el documento. Por favor, intente nuevamente.'
+      })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -226,13 +287,8 @@ export const DocumentManagementPage: React.FC = () => {
     }
   }
 
-  const filteredDocuments = documents.filter(doc => {
-    const statusOk = filterStatus === 'All' || doc.status === filterStatus
-    const searchOk = !searchTerm ||
-      doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.uploader.toLowerCase().includes(searchTerm.toLowerCase())
-    return statusOk && searchOk
-  })
+  // Filtering is handled server-side, so we use documents directly
+  const filteredDocuments = documents
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -273,6 +329,47 @@ export const DocumentManagementPage: React.FC = () => {
 
   return (
     <div className="p-6 px-20">
+      {/* Feedback Modal */}
+      {feedback && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setFeedback(null)
+            }
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#64c7cd]/30 w-full max-w-md sm:max-w-lg p-6 relative">
+            <button
+              onClick={() => setFeedback(null)}
+              className="absolute top-3 right-3 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+            >
+              <XCircle className="h-5 w-5 text-black hover:text-black" />
+            </button>
+            <div className="flex items-start space-x-3">
+              <div className={`p-2 rounded-xl ${
+                feedback.type === 'success' ? 'bg-green-500' : feedback.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+              }`}>
+                {feedback.type === 'success' && <CheckCircle className="h-5 w-5 text-black" />}
+                {feedback.type === 'error' && <AlertCircle className="h-5 w-5 text-black" />}
+                {feedback.type === 'info' && <AlertCircle className="h-5 w-5 text-black" />}
+              </div>
+              <div>
+                <h4 className="text-black text-lg font-semibold mb-1">{feedback.title}</h4>
+                <p className="text-black text-sm">{feedback.message}</p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-5">
+              <button
+                onClick={() => setFeedback(null)}
+                className="px-5 py-2 text-sm font-medium text-black bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-all duration-300 shadow-lg"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header Actions */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -469,6 +566,12 @@ export const DocumentManagementPage: React.FC = () => {
                       >
                         <Download className="h-4 w-4 text-black hover:text-blue-600 group-hover:text-blue-600" />
                       </button>
+                      <button
+                        onClick={() => handleDeleteDocument(doc)}
+                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors duration-200 group"
+                      >
+                        <Trash2 className="h-4 w-4 text-black hover:text-red-600 group-hover:text-red-600" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -513,6 +616,12 @@ export const DocumentManagementPage: React.FC = () => {
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
                   >
                     <Download className="h-4 w-4 text-black" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteDocument(doc)}
+                    className="p-2 hover:bg-red-500/20 rounded-lg transition-colors duration-200 group"
+                  >
+                    <Trash2 className="h-4 w-4 text-black hover:text-red-600 group-hover:text-red-600" />
                   </button>
                 </div>
               </div>
@@ -572,7 +681,146 @@ export const DocumentManagementPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Pagination Controls */}
+      {totalDocuments > pageSize && (
+        <div className="flex items-center justify-between mt-6 bg-white rounded-2xl shadow-2xl border border-[#64c7cd]/30 p-4">
+          <div className="text-sm text-black">
+            Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalDocuments)} de {totalDocuments} documentos
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 flex items-center space-x-1 ${
+                currentPage === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#64c7cd] text-white hover:bg-[#64c7cd]/80 hover:scale-105'
+              }`}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Anterior</span>
+            </button>
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, Math.ceil(totalDocuments / pageSize)) }, (_, i) => {
+                const totalPages = Math.ceil(totalDocuments / pageSize)
+                let pageNum: number
+                
+                if (totalPages <= 5) {
+                  pageNum = i + 1
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i
+                } else {
+                  pageNum = currentPage - 2 + i
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                      currentPage === pageNum
+                        ? 'bg-[#64c7cd] text-white'
+                        : 'bg-white text-black border border-[#64c7cd]/30 hover:bg-[#64c7cd]/10'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalDocuments / pageSize), prev + 1))}
+              disabled={currentPage >= Math.ceil(totalDocuments / pageSize)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 flex items-center space-x-1 ${
+                currentPage >= Math.ceil(totalDocuments / pageSize)
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#64c7cd] text-white hover:bg-[#64c7cd]/80 hover:scale-105'
+              }`}
+            >
+              <span>Siguiente</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedDocument && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowDeleteModal(false)
+            }
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#64c7cd]/30 w-full max-w-md sm:max-w-lg p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+            >
+              <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-black hover:text-black" />
+            </button>
+
+            <div className="mb-4 sm:mb-6 pr-8">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="p-2 bg-[#eb3089] rounded-xl">
+                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-black" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-black">Confirmar Eliminación</h3>
+              </div>
+              <p className="text-xs sm:text-sm text-black">Esta acción no se puede deshacer</p>
+            </div>
+
+            <div className="space-y-3 sm:space-y-4">
+              <div className="p-4 bg-[#eb3089]/10 border border-[#eb3089]/40 rounded-xl shadow-sm">
+                <p className="text-sm text-black mb-2">
+                  ¿Estás seguro de que quieres eliminar el documento <span className="font-semibold text-[#eb3089]">{selectedDocument.fileName}</span>?
+                </p>
+                <p className="text-xs text-black">
+                  Se eliminará permanentemente del sistema, incluyendo todos los datos asociados.
+                </p>
+              </div>
+
+              <div className="p-3 bg-white rounded-xl border border-[#64c7cd]/20 shadow-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-[#64c7cd] rounded-lg">
+                    <FileText className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-black">{selectedDocument.fileName}</p>
+                    <p className="text-xs text-black">{selectedDocument.documentType} • {selectedDocument.fileSize}</p>
+                    <p className="text-xs text-black">Subido por: {selectedDocument.uploader}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-6">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="px-4 sm:px-6 py-2 text-sm font-medium text-black bg-white border border-[#64c7cd]/40 rounded-xl hover:bg-gray-100 transition-all duration-300 shadow-sm order-2 sm:order-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDeleteDocument}
+                disabled={isDeleting}
+                className={`px-4 sm:px-6 py-2 text-sm font-medium text-white rounded-xl transition-all duration-300 hover:scale-105 shadow-lg order-1 sm:order-2 ${
+                  isDeleting 
+                    ? 'bg-[#eb3089]/50 cursor-not-allowed' 
+                    : 'bg-[#eb3089] hover:bg-[#eb3089]/80'
+                }`}
+              >
+                {isDeleting ? 'Eliminando...' : 'Eliminar Documento'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PDF View Modal */}
       {showPdfModal && selectedDocument && (

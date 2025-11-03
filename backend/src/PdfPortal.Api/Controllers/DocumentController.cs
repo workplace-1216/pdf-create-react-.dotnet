@@ -23,6 +23,7 @@ public class DocumentController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly TemplateRuleParser _templateRuleParser;
     private readonly IConfiguration _configuration;
+    private readonly IGptService _gptService;
 
     public DocumentController(
         DocumentService documentService,
@@ -30,7 +31,8 @@ public class DocumentController : ControllerBase
         ITemplateProcessorService templateProcessorService,
         IUnitOfWork unitOfWork,
         TemplateRuleParser templateRuleParser,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IGptService gptService)
     {
         _documentService = documentService;
         _pdfStorageService = pdfStorageService;
@@ -38,6 +40,7 @@ public class DocumentController : ControllerBase
         _unitOfWork = unitOfWork;
         _templateRuleParser = templateRuleParser;
         _configuration = configuration;
+        _gptService = gptService;
     }
 
     [HttpPost("upload")]
@@ -138,6 +141,29 @@ public class DocumentController : ControllerBase
             // Process document
             var pdfBytes = await System.IO.File.ReadAllBytesAsync(originalPdfPath);
             
+            // Call GPT to extract title, summary, and contact information
+            Console.WriteLine("[DocumentController] Calling GPT service to extract document information...");
+            var gptPrompt = "Extract all text from this PDF document. Then provide a title, a summary, and contact information (phone numbers, emails, addresses) in JSON format with the following structure: {\"title\": \"...\", \"summary\": \"...\", \"contactInformation\": \"...\", \"extractedText\": \"...\"}";
+            
+            GptExtractionResult? gptResult = null;
+            try
+            {
+                gptResult = await _gptService.ExtractDocumentInfoAsync(pdfBytes, gptPrompt);
+                if (gptResult.Success)
+                {
+                    Console.WriteLine($"[DocumentController] GPT extraction successful - Title: {gptResult.Title}, Summary length: {gptResult.Summary.Length}, Contact info length: {gptResult.ContactInformation.Length}");
+                }
+                else
+                {
+                    Console.WriteLine($"[DocumentController] GPT extraction failed: {gptResult.ErrorMessage}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DocumentController] Error calling GPT service: {ex.Message}");
+                // Continue processing even if GPT fails
+            }
+            
             // Parse template rules
             TemplateRuleDefinition templateRules;
             try
@@ -152,7 +178,9 @@ public class DocumentController : ControllerBase
             var processingResult = await _templateProcessorService.ProcessAsync(
                 pdfBytes, 
                 templateRules, 
-                new VendorContext { Email = userEmail, UserId = userId.ToString() }
+                new VendorContext { Email = userEmail, UserId = userId.ToString() },
+                document.OriginalFileName,
+                gptResult
             );
 
             // Store processed document
@@ -193,7 +221,8 @@ public class DocumentController : ControllerBase
             var userRole = CurrentUserHelper.GetCurrentUserRole(HttpContext);
             var userId = CurrentUserHelper.GetCurrentUserId(HttpContext);
 
-            // Clients can only see processed documents, Admins can see all
+            // Admins can see ALL documents (including those marked as deleted by clients)
+            // This endpoint is primarily for admin document management
             var processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(d => 
                 d.Status == ProcessedDocumentStatus.Approved);
 
@@ -297,16 +326,28 @@ public class DocumentController : ControllerBase
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 50) pageSize = 10;
             
-            // Get all approved processed documents with pagination
-            var totalCount = await _unitOfWork.DocumentProcessed.CountAsync(d => 
-                d.Status == ProcessedDocumentStatus.Approved);
+            // Get only the current user's approved processed documents (not deleted by client)
+            var allProcessedDocs = await _unitOfWork.DocumentProcessed.FindAsync(
+                d => d.Status == ProcessedDocumentStatus.Approved && !d.IsDeletedByClient);
             
-            var processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(
-                d => d.Status == ProcessedDocumentStatus.Approved,
-                skip: (page - 1) * pageSize,
-                take: pageSize,
-                orderBy: d => d.CreatedAt,
-                orderByDescending: true);
+            // Filter by current user's uploaded documents
+            var userProcessedDocs = new List<DocumentProcessed>();
+            foreach (var doc in allProcessedDocs)
+            {
+                var sourceDoc = await _unitOfWork.DocumentOriginals.GetByIdAsync(doc.SourceDocumentId);
+                if (sourceDoc != null && sourceDoc.UploaderUserId == userId)
+                {
+                    userProcessedDocs.Add(doc);
+                }
+            }
+            
+            // Apply pagination
+            var totalCount = userProcessedDocs.Count;
+            var processedDocuments = userProcessedDocs
+                .OrderByDescending(d => d.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
 
             var readyDocuments = new List<ClientReadyDocumentDto>();
             foreach (var doc in processedDocuments)
@@ -781,6 +822,7 @@ public class DocumentController : ControllerBase
         int deleted = 0;
         var originalsToDelete = new HashSet<int>();
         var originalFilePaths = new Dictionary<int, string>();
+        
         foreach (var id in request.DocumentIds)
         {
             var processed = await _unitOfWork.DocumentProcessed.GetByIdAsync(id);
@@ -791,36 +833,48 @@ public class DocumentController : ControllerBase
             var isOwner = source != null && source.UploaderUserId == currentUserId;
             if (!isAdmin && !isOwner) continue;
 
-            // Delete processed PDF file from storage (best-effort)
-            try { await _pdfStorageService.DeleteFileAsync(processed.FilePathFinalPdf); } catch { }
-
-            await _unitOfWork.DocumentProcessed.DeleteAsync(processed);
-            deleted++;
-
-            if (source != null)
+            if (isAdmin)
             {
-                originalsToDelete.Add(source.Id);
-                if (!originalFilePaths.ContainsKey(source.Id))
+                // Admin: Hard delete (actually remove from database and storage)
+                try { await _pdfStorageService.DeleteFileAsync(processed.FilePathFinalPdf); } catch { }
+                await _unitOfWork.DocumentProcessed.DeleteAsync(processed);
+                deleted++;
+
+                if (source != null)
                 {
-                    originalFilePaths[source.Id] = source.FilePath;
+                    originalsToDelete.Add(source.Id);
+                    if (!originalFilePaths.ContainsKey(source.Id))
+                    {
+                        originalFilePaths[source.Id] = source.FilePath;
+                    }
                 }
+            }
+            else
+            {
+                // Client: Soft delete (just hide from client view)
+                processed.IsDeletedByClient = true;
+                await _unitOfWork.DocumentProcessed.UpdateAsync(processed);
+                deleted++;
             }
         }
 
-        // Delete original records and original files (best-effort)
-        foreach (var originalId in originalsToDelete)
+        // Admin only: Delete original records and original files (best-effort)
+        if (isAdmin)
         {
-            var original = await _unitOfWork.DocumentOriginals.GetByIdAsync(originalId);
-            if (original == null) continue;
-            try
+            foreach (var originalId in originalsToDelete)
             {
-                if (originalFilePaths.TryGetValue(originalId, out var path))
+                var original = await _unitOfWork.DocumentOriginals.GetByIdAsync(originalId);
+                if (original == null) continue;
+                try
                 {
-                    await _pdfStorageService.DeleteFileAsync(path);
+                    if (originalFilePaths.TryGetValue(originalId, out var path))
+                    {
+                        await _pdfStorageService.DeleteFileAsync(path);
+                    }
                 }
+                catch { }
+                await _unitOfWork.DocumentOriginals.DeleteAsync(original);
             }
-            catch { }
-            await _unitOfWork.DocumentOriginals.DeleteAsync(original);
         }
 
         await _unitOfWork.SaveChangesAsync();
