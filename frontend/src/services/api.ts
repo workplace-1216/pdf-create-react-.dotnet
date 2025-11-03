@@ -139,4 +139,9 @@ export const adminApi = {
     api.get('/admin/analytics', {
       params: { period }
     }).then((res: AxiosResponse<ReportsAnalyticsResponse>) => res.data),
+
+  downloadDocument: (documentId: string): Promise<Blob> =>
+    api.get(`/documents/processed/${documentId}/file`, {
+      responseType: 'blob'
+    }).then((res: AxiosResponse<Blob>) => res.data),
 }

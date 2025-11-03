@@ -40,6 +40,9 @@ export const DocumentManagementPage: React.FC = () => {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
 
   // Custom Dropdown Component
   const CustomDropdown: React.FC<{
@@ -129,19 +132,55 @@ export const DocumentManagementPage: React.FC = () => {
     XLSX.writeFile(wb, 'documentos.xlsx')
   }
 
-  const handleViewDocument = (document: Document) => {
+  const handleViewDocument = async (document: Document) => {
     setSelectedDocument(document)
     setShowPdfModal(true)
+    setPdfLoading(true)
+    setPdfError(null)
+    
+    try {
+      // Clean up previous PDF URL if exists
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl)
+        setPdfUrl(null)
+      }
+
+      // Fetch PDF blob
+      const blob = await adminApi.downloadDocument(document.id)
+      const url = URL.createObjectURL(blob)
+      setPdfUrl(url)
+    } catch (error) {
+      console.error('Error loading PDF:', error)
+      setPdfError('No se pudo cargar el PDF. Por favor, intente descargarlo.')
+    } finally {
+      setPdfLoading(false)
+    }
   }
 
-  const handleDownloadDocument = (document: Document) => {
-    // TODO: Implement actual PDF download functionality
-    console.log('Downloading PDF:', document.fileName)
-    // Create a mock PDF download
-    const link = window.document.createElement('a')
-    link.href = '#' // Replace with actual PDF URL
-    link.download = document.fileName
-    link.click()
+  // Cleanup PDF URL when modal closes
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl)
+      }
+    }
+  }, [pdfUrl])
+
+  const handleDownloadDocument = async (document: Document) => {
+    try {
+      const blob = await adminApi.downloadDocument(document.id)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = document.fileName || `document_${document.id}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error downloading PDF:', error)
+      alert('Error al descargar el PDF. Por favor, intente nuevamente.')
+    }
   }
 
   const [documents, setDocuments] = useState<Document[]>([])
@@ -541,13 +580,23 @@ export const DocumentManagementPage: React.FC = () => {
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
+              if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl)
+                setPdfUrl(null)
+              }
               setShowPdfModal(false)
             }
           }}
         >
           <div className="bg-white rounded-2xl shadow-2xl border border-[#64c7cd]/30 w-full max-w-6xl h-[90vh] p-4 sm:p-6 relative flex flex-col">
             <button
-              onClick={() => setShowPdfModal(false)}
+              onClick={() => {
+                if (pdfUrl) {
+                  URL.revokeObjectURL(pdfUrl)
+                  setPdfUrl(null)
+                }
+                setShowPdfModal(false)
+              }}
               className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 z-10"
             >
               <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-black hover:text-black" />
@@ -569,25 +618,42 @@ export const DocumentManagementPage: React.FC = () => {
             </div>
 
             {/* PDF Viewer */}
-            <div className="flex-1 bg-white rounded-xl p-4 overflow-hidden">
-              <div className="w-full h-full flex items-center justify-center bg-white rounded-lg">
-                <div className="text-center">
-                  <FileText className="h-16 w-16 text-black mx-auto mb-4" />
-                  <p className="text-black mb-2">Vista previa del PDF</p>
-                  <p className="text-xs text-black mb-4">
-                    {selectedDocument.fileName}
-                  </p>
-                  <div className="flex items-center justify-center space-x-4">
+            <div className="flex-1 bg-gray-100 rounded-xl p-4 overflow-hidden border border-gray-300">
+              {pdfLoading ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#64c7cd] mx-auto mb-4"></div>
+                    <p className="text-black">Cargando PDF...</p>
+                  </div>
+                </div>
+              ) : pdfError ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+                    <p className="text-black mb-2">{pdfError}</p>
                     <button
-                      onClick={() => handleDownloadDocument(selectedDocument)}
-                      className="px-4 py-2 text-sm font-medium text-black bg-[#64c7cd]/10 rounded-xl hover:bg-[#64c7cd]/20 transition-all duration-300 hover:scale-105 shadow-md flex items-center space-x-2"
+                      onClick={() => selectedDocument && handleViewDocument(selectedDocument)}
+                      className="px-4 py-2 text-sm font-medium text-white bg-[#64c7cd] rounded-xl hover:bg-[#64c7cd]/80 transition-all duration-300"
                     >
-                      <Download className="h-4 w-4" />
-                      <span>Descargar PDF</span>
+                      Reintentar
                     </button>
                   </div>
                 </div>
-              </div>
+              ) : pdfUrl ? (
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full border-0 rounded-lg"
+                  title="PDF Preview"
+                  style={{ minHeight: '500px' }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-black mb-2">No se pudo cargar el PDF</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Document Info */}
