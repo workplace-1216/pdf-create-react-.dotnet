@@ -4,6 +4,19 @@ using Microsoft.IdentityModel.Tokens;
 using PdfPortal.Infrastructure.Data;
 using PdfPortal.Infrastructure.Extensions;
 using System.Text;
+using DotNetEnv;
+
+// Load environment variables from .env file
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), "../../../.env");
+if (File.Exists(envPath))
+{
+    Env.Load(envPath);
+    Console.WriteLine("✓ Loaded environment variables from .env file");
+}
+else
+{
+    Console.WriteLine("⚠ No .env file found, using appsettings.json or environment variables");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,10 +71,17 @@ builder.Services.AddCors(options =>
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Configure JWT Authentication
+// Priority: Environment Variables > appsettings.json
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = jwtSettings["Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
-var issuer = jwtSettings["Issuer"] ?? "PdfPortal";
-var audience = jwtSettings["Audience"] ?? "PdfPortalUsers";
+var key = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
+    ?? jwtSettings["Key"] 
+    ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") 
+    ?? jwtSettings["Issuer"] 
+    ?? "PdfPortal";
+var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+    ?? jwtSettings["Audience"] 
+    ?? "PdfPortalUsers";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

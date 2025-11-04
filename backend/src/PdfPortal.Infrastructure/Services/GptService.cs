@@ -18,17 +18,24 @@ public class GptService : IGptService
     {
         _configuration = configuration;
         _httpClient = httpClientFactory.CreateClient();
-        _apiKey = _configuration["OpenAI:ApiKey"];
-        _model = _configuration["OpenAI:Model"] ?? "gpt-4-turbo-preview";
+        
+        // Priority: Environment Variables > appsettings.json
+        _apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") 
+            ?? _configuration["OpenAI:ApiKey"];
+        _model = Environment.GetEnvironmentVariable("OPENAI_MODEL") 
+            ?? _configuration["OpenAI:Model"] 
+            ?? "gpt-4-turbo-preview";
         
         if (string.IsNullOrEmpty(_apiKey))
         {
             Console.WriteLine("[GptService] WARNING: OpenAI API key not configured");
+            Console.WriteLine("[GptService] Please set OPENAI_API_KEY in .env file or appsettings.json");
         }
         else
         {
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "PdfPortal/1.0");
+            Console.WriteLine($"[GptService] ✓ OpenAI API configured (Model: {_model})");
         }
     }
 

@@ -16,9 +16,32 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        // Database
+        // Database - Priority: Environment Variables > appsettings.json
+        var dbHost = Environment.GetEnvironmentVariable("DATABASE_HOST");
+        var dbPort = Environment.GetEnvironmentVariable("DATABASE_PORT");
+        var dbName = Environment.GetEnvironmentVariable("DATABASE_NAME");
+        var dbUser = Environment.GetEnvironmentVariable("DATABASE_USER");
+        var dbPassword = Environment.GetEnvironmentVariable("DATABASE_PASSWORD");
+        
+        string connectionString;
+        
+        // If all environment variables are set, use them to build connection string
+        if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbName) && 
+            !string.IsNullOrEmpty(dbUser) && !string.IsNullOrEmpty(dbPassword))
+        {
+            connectionString = $"Host={dbHost};Port={dbPort ?? "5432"};Database={dbName};Username={dbUser};Password={dbPassword};SSL Mode=Disable";
+            Console.WriteLine("✓ Using database connection from environment variables");
+        }
+        else
+        {
+            // Fall back to appsettings.json
+            connectionString = configuration.GetConnectionString("DefaultConnection") 
+                ?? "Host=localhost;Database=pdfportal;Username=postgres;Password=postgres;SSL Mode=Disable";
+            Console.WriteLine("✓ Using database connection from appsettings.json");
+        }
+        
         services.AddDbContext<PdfPortalDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(connectionString));
 
         // Repositories
         services.AddScoped<IUnitOfWork, UnitOfWork>();
