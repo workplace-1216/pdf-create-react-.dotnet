@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Http;
 using PdfPortal.Application.Interfaces;
 using PdfPortal.Application.Models;
 using System.Text;
@@ -52,7 +54,7 @@ public class GptService : IGptService
             var requestBody = new
             {
                 model = _model,
-                messages = new[]
+                messages = new object[]
                 {
                     new
                     {

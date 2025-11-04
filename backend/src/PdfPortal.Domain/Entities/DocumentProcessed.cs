@@ -11,10 +11,9 @@ public class DocumentProcessed
     
     public DocumentOriginal SourceDocument { get; set; } = null!;
     
-    [Required]
-    public int TemplateRuleSetId { get; set; }
+    public int? TemplateRuleSetId { get; set; }
     
-    public TemplateRuleSet TemplateRuleSet { get; set; } = null!;
+    public TemplateRuleSet? TemplateRuleSet { get; set; }
     
     [Required]
     [MaxLength(500)]

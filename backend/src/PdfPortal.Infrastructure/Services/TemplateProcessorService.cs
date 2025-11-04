@@ -21,7 +21,7 @@ public class TemplateProcessorService : ITemplateProcessorService
         Console.WriteLine("[TemplateProcessorService] Initialized with WinForms PDF Processor");
     }
 
-    public async Task<ProcessResult> ProcessAsync(byte[] originalPdfBytes, TemplateRuleDefinition rules, VendorContext vendor, string documentTitle = null, Models.GptExtractionResult? gptData = null)
+    public async Task<ProcessResult> ProcessAsync(byte[] originalPdfBytes, TemplateRuleDefinition rules, VendorContext vendor, string? documentTitle = null, GptExtractionResult? gptData = null)
     {
         var result = new ProcessResult
         {

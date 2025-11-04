@@ -238,10 +238,17 @@ public class DocumentController : ControllerBase
             foreach (var doc in processedDocuments)
             {
                 var sourceDoc = await _unitOfWork.DocumentOriginals.GetByIdAsync(doc.SourceDocumentId);
-                var template = await _unitOfWork.TemplateRuleSets.GetByIdAsync(doc.TemplateRuleSetId);
+                
+                // Handle null TemplateRuleSetId for older documents
+                TemplateRuleSet? template = null;
+                if (doc.TemplateRuleSetId.HasValue && doc.TemplateRuleSetId.Value > 0)
+                {
+                    template = await _unitOfWork.TemplateRuleSets.GetByIdAsync(doc.TemplateRuleSetId.Value);
+                }
+                
                 var vendor = sourceDoc != null ? await _unitOfWork.Users.GetByIdAsync(sourceDoc.UploaderUserId) : null;
 
-                if (sourceDoc != null && template != null && vendor != null)
+                if (sourceDoc != null && vendor != null)
                 {
                     var extractedData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
                         doc.ExtractedJsonData) ?? new Dictionary<string, object>();
@@ -256,8 +263,8 @@ public class DocumentController : ControllerBase
                         ProcessedAt = doc.CreatedAt,
                         VendorId = vendor.Id,
                         VendorEmail = vendor.Email,
-                        TemplateId = template.Id,
-                        TemplateName = template.Name,
+                        TemplateId = template?.Id ?? 0,
+                        TemplateName = template?.Name ?? "Default Template",
                         ExtractedData = extractedData
                     });
                 }
@@ -423,8 +430,12 @@ public class DocumentController : ControllerBase
             var extractedData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
                 processedDocument.ExtractedJsonData) ?? new Dictionary<string, object>();
 
-            // Get template information
-            var template = await _unitOfWork.TemplateRuleSets.GetByIdAsync(processedDocument.TemplateRuleSetId);
+            // Get template information (handle null for older documents)
+            TemplateRuleSet? template = null;
+            if (processedDocument.TemplateRuleSetId.HasValue && processedDocument.TemplateRuleSetId.Value > 0)
+            {
+                template = await _unitOfWork.TemplateRuleSets.GetByIdAsync(processedDocument.TemplateRuleSetId.Value);
+            }
 
             var detail = new ClientDocumentDetailDto
             {

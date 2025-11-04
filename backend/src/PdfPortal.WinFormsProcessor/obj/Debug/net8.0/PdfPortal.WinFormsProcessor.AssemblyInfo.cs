@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PdfPortal.WinFormsProcessor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2f37d6d89e7e52c10adf801e41fe8466a5a7970f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1740820f9860a1851ed4a3683843604d0d4034f9")]
 [assembly: System.Reflection.AssemblyProductAttribute("PdfPortal.WinFormsProcessor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PdfPortal.WinFormsProcessor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
