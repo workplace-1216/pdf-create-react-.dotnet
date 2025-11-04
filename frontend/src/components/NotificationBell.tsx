@@ -70,7 +70,7 @@ export const NotificationBell: React.FC = () => {
       {/* Bell Icon */}
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="relative p-2 hover:bg-white/30 rounded-lg transition-all duration-300"
+        className="relative p-2 hover:bg-white/30 rounded-lg transition-all duration-300 mr-[70px]"
       >
         <Bell className="h-5 w-5 text-black" />
         {unreadCount > 0 && (
