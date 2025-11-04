@@ -7,15 +7,31 @@ using System.Text;
 using DotNetEnv;
 
 // Load environment variables from .env file
-var envPath = Path.Combine(Directory.GetCurrentDirectory(), "../../../.env");
-if (File.Exists(envPath))
+// Try multiple possible locations
+var possibleEnvPaths = new[]
 {
-    Env.Load(envPath);
-    Console.WriteLine("✓ Loaded environment variables from .env file");
+    Path.Combine(Directory.GetCurrentDirectory(), ".env"),           // Same directory as executable
+    Path.Combine(Directory.GetCurrentDirectory(), "../../.env"),     // backend directory
+    Path.Combine(Directory.GetCurrentDirectory(), "../../../.env")   // project root
+};
+
+bool envLoaded = false;
+foreach (var envPath in possibleEnvPaths)
+{
+    if (File.Exists(envPath))
+    {
+        Env.Load(envPath);
+        Console.WriteLine($"✓ Loaded environment variables from {envPath}");
+        envLoaded = true;
+        break;
+    }
 }
-else
+
+if (!envLoaded)
 {
     Console.WriteLine("⚠ No .env file found, using appsettings.json or environment variables");
+    Console.WriteLine($"⚠ Current directory: {Directory.GetCurrentDirectory()}");
+    Console.WriteLine($"⚠ Searched in: {string.Join(", ", possibleEnvPaths)}");
 }
 
 var builder = WebApplication.CreateBuilder(args);

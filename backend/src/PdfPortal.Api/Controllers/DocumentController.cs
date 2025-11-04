@@ -141,28 +141,64 @@ public class DocumentController : ControllerBase
             // Process document
             var pdfBytes = await System.IO.File.ReadAllBytesAsync(originalPdfPath);
             
-            // Call GPT to extract title, summary, and contact information
-            Console.WriteLine("[DocumentController] Calling GPT service to extract document information...");
-            var gptPrompt = "Extract all text from this PDF document. Then provide a title, a summary, and contact information (phone numbers, emails, addresses) in JSON format with the following structure: {\"title\": \"...\", \"summary\": \"...\", \"contactInformation\": \"...\", \"extractedText\": \"...\"}";
+            // STEP 1: Extract text from PDF using PdfProcessor
+            Console.WriteLine("==========================================================");
+            Console.WriteLine("[DocumentController] 📄 PDF UPLOAD - Starting Text Extraction");
+            Console.WriteLine($"[DocumentController] PDF Size: {pdfBytes.Length} bytes");
+            
+            string extractedText = "";
+            try
+            {
+                // Use iText7 to extract text from PDF
+                using (var pdfReader = new iText.Kernel.Pdf.PdfReader(new MemoryStream(pdfBytes)))
+                using (var pdfDoc = new iText.Kernel.Pdf.PdfDocument(pdfReader))
+                {
+                    for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+                    {
+                        var page = pdfDoc.GetPage(i);
+                        var strategy = new iText.Kernel.Pdf.Canvas.Parser.Listener.LocationTextExtractionStrategy();
+                        extractedText += iText.Kernel.Pdf.Canvas.Parser.PdfTextExtractor.GetTextFromPage(page, strategy);
+                    }
+                }
+                Console.WriteLine($"[DocumentController] ✓ Extracted {extractedText.Length} characters from PDF");
+                Console.WriteLine($"[DocumentController] Text preview: {extractedText.Substring(0, Math.Min(200, extractedText.Length))}...");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DocumentController] ⚠ Text extraction failed: {ex.Message}");
+                extractedText = "";
+            }
+            
+            // STEP 2: Call GPT to analyze the extracted text
+            Console.WriteLine("[DocumentController] 🤖 Calling GPT to analyze text...");
+            var gptPrompt = $"Please analyze this PDF document text and provide a title, a summary, and contact information (phone numbers, emails, addresses). Return your response in JSON format with this structure: {{\"title\": \"...\", \"summary\": \"...\", \"contactInformation\": \"...\"}}.\n\nDocument text:\n{extractedText}";
             
             GptExtractionResult? gptResult = null;
             try
             {
-                gptResult = await _gptService.ExtractDocumentInfoAsync(pdfBytes, gptPrompt);
-                if (gptResult.Success)
+                gptResult = await _gptService.ExtractDocumentInfoFromTextAsync(extractedText, gptPrompt);
+                
+                Console.WriteLine($"[DocumentController] GPT Result - Success: {gptResult?.Success ?? false}");
+                
+                if (gptResult != null && gptResult.Success)
                 {
-                    Console.WriteLine($"[DocumentController] GPT extraction successful - Title: {gptResult.Title}, Summary length: {gptResult.Summary.Length}, Contact info length: {gptResult.ContactInformation.Length}");
+                    Console.WriteLine($"[DocumentController] ✓ GPT extraction successful!");
+                    Console.WriteLine($"[DocumentController] Title: {gptResult.Title ?? "(null)"}");
+                    Console.WriteLine($"[DocumentController] Summary: {gptResult.Summary ?? "(null)"}");
+                    Console.WriteLine($"[DocumentController] Contact Information: {gptResult.ContactInformation ?? "(null)"}");
                 }
                 else
                 {
-                    Console.WriteLine($"[DocumentController] GPT extraction failed: {gptResult.ErrorMessage}");
+                    Console.WriteLine($"[DocumentController] ✗ GPT extraction failed: {gptResult?.ErrorMessage ?? "gptResult is null"}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DocumentController] Error calling GPT service: {ex.Message}");
+                Console.WriteLine($"[DocumentController] ❌ Error calling GPT service: {ex.Message}");
+                Console.WriteLine($"[DocumentController] Stack trace: {ex.StackTrace}");
                 // Continue processing even if GPT fails
             }
+            Console.WriteLine("==========================================================");
             
             // Parse template rules
             TemplateRuleDefinition templateRules;
@@ -186,18 +222,28 @@ public class DocumentController : ControllerBase
             // Store processed document
             var processedPdfPath = await _pdfStorageService.SaveProcessedPdfAsync(processingResult.FinalPdfBytes, $"processed_{document.Id}.pdf");
             
+            Console.WriteLine("[DocumentController] 💾 Saving to database...");
+            Console.WriteLine($"[DocumentController] GptTitle to save: {gptResult?.Title ?? "(null)"}");
+            Console.WriteLine($"[DocumentController] GptSummary to save: {(gptResult?.Summary != null ? gptResult.Summary.Substring(0, Math.Min(50, gptResult.Summary.Length)) + "..." : "(null)")}");
+            Console.WriteLine($"[DocumentController] GptContactInformation to save: {gptResult?.ContactInformation ?? "(null)"}");
+            
             var processedDocument = new DocumentProcessed
             {
                 SourceDocumentId = document.Id,
                 TemplateRuleSetId = templateId,
                 FilePathFinalPdf = processedPdfPath,
                 ExtractedJsonData = System.Text.Json.JsonSerializer.Serialize(processingResult.ExtractedFields),
+                GptTitle = gptResult?.Title,
+                GptSummary = gptResult?.Summary,
+                GptContactInformation = gptResult?.ContactInformation,
                 Status = ProcessedDocumentStatus.Approved,
                 CreatedAt = DateTime.UtcNow
             };
 
             await _unitOfWork.DocumentProcessed.AddAsync(processedDocument);
             await _unitOfWork.SaveChangesAsync();
+            
+            Console.WriteLine("[DocumentController] ✓ Saved to database successfully!");
 
             return Ok(new DocumentUploadResponse
             {

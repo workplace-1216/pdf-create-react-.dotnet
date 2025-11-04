@@ -22,6 +22,13 @@ public class DocumentProcessed
     [Required]
     public string ExtractedJsonData { get; set; } = string.Empty;
     
+    // GPT-4 Extracted Information
+    public string? GptTitle { get; set; }
+    
+    public string? GptSummary { get; set; }
+    
+    public string? GptContactInformation { get; set; }
+    
     public DateTime? ApprovedAt { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
