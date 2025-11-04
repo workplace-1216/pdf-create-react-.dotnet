@@ -177,7 +177,7 @@ public class DocumentController : ControllerBase
             
             // STEP 2: Call GPT to analyze the extracted text
             Console.WriteLine("[DocumentController] 🤖 Calling GPT to analyze text...");
-            var gptPrompt = $"Please analyze this PDF document text and provide a title, a summary, and contact information (phone numbers, emails, addresses). Return your response in JSON format with this structure: {{\"title\": \"...\", \"summary\": \"...\", \"contactInformation\": \"...\"}}.\n\nDocument text:\n{extractedText}";
+            var gptPrompt = $"Please analyze this PDF document text and provide a title, a summary(min 300 words and max 400 words), and contact information (phone numbers, emails, addresses). Return your response in JSON format with this structure: {{\"title\": \"...\", \"summary\": \"...\", \"contactInformation\": \"...\"}}.\n\nDocument text:\n{extractedText}";
             
             GptExtractionResult? gptResult = null;
             try

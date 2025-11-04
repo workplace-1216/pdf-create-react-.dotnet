@@ -298,7 +298,7 @@ Q
 BT
 0 0 0 rg
 /F2 12 Tf
-40 90 Td";
+405 90 Td";
 
             // Add contact information in footer
             if (contactLines.Count > 0)
@@ -319,8 +319,8 @@ ET
 BT
 0 0 0 rg
 /F2 11 Tf
-45 50 Td
-(Agenda tu visita al) Tj
+405 50 Td
+( ) Tj
 /F2 10 Tf
 405 35 Td
 (" + EscapePdfString(extractedEmail) + @") Tj
