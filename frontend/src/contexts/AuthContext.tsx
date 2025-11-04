@@ -109,7 +109,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Skip getCurrentUser call to avoid timing issues
       // The user data we have from registration is sufficient
-      console.log('Registration completed successfully, user:', user)
       return user
     } catch (error) {
       throw error

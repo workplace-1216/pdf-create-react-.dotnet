@@ -241,13 +241,8 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
   // Helper function to clean up regex patterns and show proper extracted values
   const getDisplayValue = (value: string, type: string) => {
-    // Enhanced debug logging
-    console.log(`🔍 getDisplayValue called with value: "${value}", type: "${type}"`)
-    console.log(`🔍 Value length: ${value?.length || 0}`)
-    console.log(`🔍 Value type: ${typeof value}`)
 
     if (!value || value === "N/A" || value === "0") {
-      console.log(`❌ Returning "No extraído" for value: "${value}"`)
       return "No extraído"
     }
 
@@ -268,7 +263,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       value.includes("([0-9") ||
       value.includes("\\.[0-9]")
 
-    console.log(`Is regex pattern: ${isRegexPattern}`)
 
     if (isRegexPattern) {
       // This is a regex pattern, show a placeholder indicating extraction is needed
@@ -471,7 +465,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       // Check if user and token are available
       const token = localStorage.getItem('token')
       if (!token || !user) {
-        console.log('Waiting for authentication...')
         setLoading(false)
         return
       }
@@ -883,14 +876,11 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     const failed: string[] = []
 
     try {
-      console.log(`Starting upload of ${selectedFiles.length} files...`)
 
       // Upload files sequentially
       for (const file of selectedFiles) {
         try {
-          console.log('Uploading file:', file.name)
           const uploadResult = await documentApi.upload(file, 1)
-          console.log('Upload successful:', uploadResult)
           uploaded.push(file.name)
         } catch (error) {
           console.error(`Upload failed for ${file.name}:`, error)
@@ -905,11 +895,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       }
 
       // Wait a moment for processing, then refresh
-      console.log('Refreshing document list...')
       await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds for processing
       await fetchReadyDocuments() // Refresh the documents list
 
-      console.log('Document list refreshed, current count:', readyDocs.length)
 
       // Show success message with uploaded file names
       if (uploaded.length > 0) {

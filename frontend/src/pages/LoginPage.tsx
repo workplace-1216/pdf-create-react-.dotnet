@@ -47,7 +47,6 @@ export const LoginPage: React.FC = () => {
           email: formData.email,
           tempPassword: formData.password
         })
-        console.log('Registration completed, user:', registeredUser)
         // Navigate to role-based page after successful registration
         // For client users, navigate directly to client page
         if (registeredUser.role === 'Client') {

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PdfPortal.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6699134e231544ec60808d8f402710a420f329f6")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2a10637fe8e004f848023c438487e28b627113cc")]
 [assembly: System.Reflection.AssemblyProductAttribute("PdfPortal.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PdfPortal.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
