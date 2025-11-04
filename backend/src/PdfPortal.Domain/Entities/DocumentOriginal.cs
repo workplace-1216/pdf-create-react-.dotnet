@@ -23,6 +23,10 @@ public class DocumentOriginal
     
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
     
+    // Identifier for a multi-file upload session (all files sent in one click)
+    [MaxLength(100)]
+    public string? UploadBatchId { get; set; }
+    
     public DocumentStatus Status { get; set; } = DocumentStatus.Uploaded;
 }
 

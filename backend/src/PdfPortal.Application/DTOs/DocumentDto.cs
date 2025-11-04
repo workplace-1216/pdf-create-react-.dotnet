@@ -114,6 +114,8 @@ public class ClientReadyDocumentDto
     public string Id { get; set; } = string.Empty;
     public string ProveedorEmail { get; set; } = string.Empty;
     public DateTime ReadyAtUtc { get; set; }
+    public DateTime? UploadedAtUtc { get; set; } // original upload timestamp for stable folder grouping
+    public string? UploadBatchId { get; set; }
     public string RfcEmisor { get; set; } = string.Empty;
     public string Periodo { get; set; } = string.Empty;
     public string MontoTotalMxn { get; set; } = string.Empty;

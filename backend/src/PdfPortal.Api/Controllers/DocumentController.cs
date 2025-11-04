@@ -50,7 +50,7 @@ public class DocumentController : ControllerBase
 
     [HttpPost("upload")]
     [Authorize(Roles = "Client,Admin")]
-    public async Task<ActionResult<DocumentUploadResponse>> UploadDocument([FromForm] IFormFile file, [FromForm] int templateId = 1)
+    public async Task<ActionResult<DocumentUploadResponse>> UploadDocument([FromForm] IFormFile file, [FromForm] int templateId = 1, [FromForm] string? batchId = null)
     {
         try
         {
@@ -90,7 +90,8 @@ public class DocumentController : ControllerBase
                 FilePath = originalPdfPath,
                 FileSizeBytes = file.Length,
                 Status = DocumentStatus.Uploaded,
-                UploadedAt = DateTime.UtcNow
+                UploadedAt = DateTime.UtcNow,
+                UploadBatchId = string.IsNullOrWhiteSpace(batchId) ? null : batchId
             };
 
             await _unitOfWork.DocumentOriginals.AddAsync(document);
@@ -224,8 +225,25 @@ public class DocumentController : ControllerBase
                 gptResult
             );
 
+            // Generate RFC-based filename
+            var currentUser = await _unitOfWork.Users.GetByIdAsync(userId);
+            string rfcPrefix = "XXXX";
+            int sequentialNumber = 1;
+            
+            if (currentUser != null && !string.IsNullOrEmpty(currentUser.Rfc) && currentUser.Rfc.Length >= 4)
+            {
+                rfcPrefix = currentUser.Rfc.Substring(0, 4).ToUpper();
+            }
+            
+            // Get sequential number: count of user's documents uploaded so far (including current one)
+            var allUserDocs = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == userId);
+            sequentialNumber = allUserDocs.Count(); // Current document will be the Nth document
+            
+            var processedFileName = $"{rfcPrefix}-{sequentialNumber:D4}_document.pdf";
+            Console.WriteLine($"[DocumentController] 📝 Generated processed filename: {processedFileName}");
+            
             // Store processed document
-            var processedPdfPath = await _pdfStorageService.SaveProcessedPdfAsync(processingResult.FinalPdfBytes, $"processed_{document.Id}.pdf");
+            var processedPdfPath = await _pdfStorageService.SaveProcessedPdfAsync(processingResult.FinalPdfBytes, processedFileName);
             
             Console.WriteLine("[DocumentController] 💾 Saving to database...");
             Console.WriteLine($"[DocumentController] GptTitle to save: {gptResult?.Title ?? "(null)"}");
@@ -355,6 +373,8 @@ public class DocumentController : ControllerBase
     {
         try
         {
+            Console.WriteLine($"[DownloadProcessedDocument] 📥 Document ID: {id}");
+            
             var processedDocument = await _unitOfWork.DocumentProcessed.GetByIdAsync(id);
             if (processedDocument == null)
             {
@@ -368,7 +388,37 @@ public class DocumentController : ControllerBase
 
             var pdfBytes = await _pdfStorageService.GetProcessedPdfAsync(processedDocument.FilePathFinalPdf);
             
-            return File(pdfBytes, "application/pdf", $"document_{id}.pdf");
+            // Get uploader's RFC for filename prefix
+            var sourceDoc = await _unitOfWork.DocumentOriginals.GetByIdAsync(processedDocument.SourceDocumentId);
+            var uploader = sourceDoc != null ? await _unitOfWork.Users.GetByIdAsync(sourceDoc.UploaderUserId) : null;
+            
+            Console.WriteLine($"[DownloadProcessedDocument] Source Doc ID: {sourceDoc?.Id}, Uploader ID: {uploader?.Id}");
+            Console.WriteLine($"[DownloadProcessedDocument] Uploader Email: {uploader?.Email}, RFC: {uploader?.Rfc}");
+            
+            string rfcPrefix = "XXXX";
+            int sequentialNumber = 1;
+            
+            if (uploader != null && sourceDoc != null)
+            {
+                if (!string.IsNullOrEmpty(uploader.Rfc) && uploader.Rfc.Length >= 4)
+                {
+                    rfcPrefix = uploader.Rfc.Substring(0, 4).ToUpper();
+                }
+                
+                // Get sequential number based on upload order
+                var allUserDocs = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == uploader.Id);
+                var sortedDocs = allUserDocs.OrderBy(d => d.UploadedAt).ThenBy(d => d.Id).ToList();
+                Console.WriteLine($"[DownloadProcessedDocument] Total user docs: {sortedDocs.Count}");
+                var docIndex = sortedDocs.FindIndex(d => d.Id == sourceDoc.Id);
+                sequentialNumber = docIndex >= 0 ? docIndex + 1 : 1;
+                Console.WriteLine($"[DownloadProcessedDocument] Doc Index: {docIndex}, Sequential Number: {sequentialNumber}");
+            }
+            
+            // Format: RFC prefix + sequential number (based on upload order)
+            var fileName = $"{rfcPrefix}-{sequentialNumber:D4}_document.pdf";
+            Console.WriteLine($"[DownloadProcessedDocument] ✅ Generated filename: {fileName}");
+            
+            return File(pdfBytes, "application/pdf", fileName);
         }
         catch (FileNotFoundException)
         {
@@ -376,6 +426,7 @@ public class DocumentController : ControllerBase
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[DownloadProcessedDocument] ❌ Error: {ex.Message}");
             return StatusCode(500, $"Error downloading document: {ex.Message}");
         }
     }
@@ -440,7 +491,9 @@ public class DocumentController : ControllerBase
                         Id = doc.Id.ToString(),
                         ProveedorEmail = vendor.Email,
                         ReadyAtUtc = doc.CreatedAt,
-                        RfcEmisor = extractedData.GetValueOrDefault("RFC", "N/A").ToString() ?? "N/A",
+                        UploadedAtUtc = sourceDoc.UploadedAt,
+                        UploadBatchId = sourceDoc.UploadBatchId,
+                        RfcEmisor = vendor.Rfc ?? "No registrado",  // Use user's RFC from account
                         Periodo = extractedData.GetValueOrDefault("periodo", "N/A").ToString() ?? "N/A",
                         MontoTotalMxn = extractedData.GetValueOrDefault("monto_total", "0").ToString() ?? "0",
                         ComplianceStatus = "ListoParaEnviar"
@@ -511,7 +564,7 @@ public class DocumentController : ControllerBase
                 ReadyAtUtc = processedDocument.CreatedAt,
                 FiscalData = new ClientFiscalDataDto
                 {
-                    RfcEmisor = extractedData.GetValueOrDefault("RFC", "N/A").ToString() ?? "N/A",
+                    RfcEmisor = vendor.Rfc ?? "No registrado",  // Use user's RFC from account
                     Periodo = extractedData.GetValueOrDefault("periodo", "N/A").ToString() ?? "N/A",
                     MontoTotalMxn = extractedData.GetValueOrDefault("monto_total", "0").ToString() ?? "0"
                 },
@@ -526,7 +579,7 @@ public class DocumentController : ControllerBase
                 AppliedMetadata = new ClientAppliedMetadataDto
                 {
                     Title = "Factura Maquila Normalizada",
-                    RfcEmisorField = extractedData.GetValueOrDefault("RFC", "N/A").ToString() ?? "N/A",
+                    RfcEmisorField = vendor.Rfc ?? "No registrado",  // Use user's RFC from account
                     PeriodoField = extractedData.GetValueOrDefault("periodo", "N/A").ToString() ?? "N/A",
                     NormalizedAtUtc = processedDocument.CreatedAt,
                     NormalizedByEmail = vendor.Email
@@ -693,6 +746,8 @@ public class DocumentController : ControllerBase
     {
         try
         {
+            Console.WriteLine($"[DownloadClientDocumentFile] 📥 Client download requested - Document ID: {id}");
+            
             if (!int.TryParse(id, out var documentId))
             {
                 return BadRequest("Invalid document ID");
@@ -711,14 +766,47 @@ public class DocumentController : ControllerBase
 
             var pdfBytes = await _pdfStorageService.GetProcessedPdfAsync(processedDocument.FilePathFinalPdf);
             
-            return File(pdfBytes, "application/pdf", $"document_{id}.pdf");
+            // Get current user's RFC for filename prefix and calculate sequential number
+            var currentUserId = CurrentUserHelper.GetCurrentUserId(HttpContext);
+            var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
+            var sourceDoc = await _unitOfWork.DocumentOriginals.GetByIdAsync(processedDocument.SourceDocumentId);
+            
+            Console.WriteLine($"[DownloadClientDocumentFile] User ID: {currentUserId}, RFC: {currentUser?.Rfc ?? "(null)"}");
+            Console.WriteLine($"[DownloadClientDocumentFile] Source Doc ID: {sourceDoc?.Id}");
+            
+            string rfcPrefix = "XXXX";
+            int sequentialNumber = 1;
+            
+            if (currentUser != null && sourceDoc != null)
+            {
+                if (!string.IsNullOrEmpty(currentUser.Rfc) && currentUser.Rfc.Length >= 4)
+                {
+                    rfcPrefix = currentUser.Rfc.Substring(0, 4).ToUpper();
+                }
+                
+                // Get sequential number based on upload order
+                var allUserDocs = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == currentUserId);
+                var sortedDocs = allUserDocs.OrderBy(d => d.UploadedAt).ThenBy(d => d.Id).ToList();
+                Console.WriteLine($"[DownloadClientDocumentFile] Total user docs: {sortedDocs.Count}");
+                var docIndex = sortedDocs.FindIndex(d => d.Id == sourceDoc.Id);
+                sequentialNumber = docIndex >= 0 ? docIndex + 1 : 1;
+                Console.WriteLine($"[DownloadClientDocumentFile] Doc Index: {docIndex}, Sequential: {sequentialNumber}");
+            }
+            
+            // Format: RFC prefix + sequential number (based on upload order)
+            var fileName = $"{rfcPrefix}-{sequentialNumber:D4}_document.pdf";
+            Console.WriteLine($"[DownloadClientDocumentFile] ✅ Generated filename: {fileName}");
+            
+            return File(pdfBytes, "application/pdf", fileName);
         }
         catch (FileNotFoundException)
         {
+            Console.WriteLine($"[DownloadClientDocumentFile] ❌ File not found");
             return NotFound("File not found");
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[DownloadClientDocumentFile] ❌ Error: {ex.Message}");
             return StatusCode(500, $"Error downloading document: {ex.Message}");
         }
     }
@@ -766,13 +854,32 @@ public class DocumentController : ControllerBase
             return BadRequest("No document IDs provided");
         }
 
+        // Get current user's RFC for filename prefix
+        var currentUserId = CurrentUserHelper.GetCurrentUserId(HttpContext);
+        var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
+        
+        string rfcPrefix = "XXXX";
+        if (currentUser != null && !string.IsNullOrEmpty(currentUser.Rfc) && currentUser.Rfc.Length >= 4)
+        {
+            rfcPrefix = currentUser.Rfc.Substring(0, 4).ToUpper();
+        }
+        
+        // Get all user's original documents for sequential numbering
+        var allUserDocs = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == currentUserId);
+        var sortedUserDocs = allUserDocs.OrderBy(d => d.UploadedAt).ThenBy(d => d.Id).ToList();
+
         if (request.DocumentIds.Count == 1)
         {
             var singleId = request.DocumentIds[0];
             var doc = await _unitOfWork.DocumentProcessed.GetByIdAsync(singleId);
             if (doc == null) return NotFound($"Document {singleId} not found");
+            
+            var sourceDoc = await _unitOfWork.DocumentOriginals.GetByIdAsync(doc.SourceDocumentId);
+            var docIndex = sourceDoc != null ? sortedUserDocs.FindIndex(d => d.Id == sourceDoc.Id) : -1;
+            int sequentialNumber = docIndex >= 0 ? docIndex + 1 : 1;
+            
             var bytes = await _pdfStorageService.GetProcessedPdfAsync(doc.FilePathFinalPdf);
-            var name = $"document_{singleId}.pdf";
+            var name = $"{rfcPrefix}-{sequentialNumber:D4}_document.pdf";
             return File(bytes, "application/pdf", name);
         }
 
@@ -783,8 +890,13 @@ public class DocumentController : ControllerBase
             {
                 var doc = await _unitOfWork.DocumentProcessed.GetByIdAsync(id);
                 if (doc == null) continue;
+                
+                var sourceDoc = await _unitOfWork.DocumentOriginals.GetByIdAsync(doc.SourceDocumentId);
+                var docIndex = sourceDoc != null ? sortedUserDocs.FindIndex(d => d.Id == sourceDoc.Id) : -1;
+                int sequentialNumber = docIndex >= 0 ? docIndex + 1 : 1;
+                
                 var bytes = await _pdfStorageService.GetProcessedPdfAsync(doc.FilePathFinalPdf);
-                var entryName = $"document_{id}.pdf";
+                var entryName = $"{rfcPrefix}-{sequentialNumber:D4}_document.pdf";
                 var entry = zip.CreateEntry(entryName, CompressionLevel.Fastest);
                 await using var entryStream = entry.Open();
                 await entryStream.WriteAsync(bytes, 0, bytes.Length);
@@ -792,7 +904,7 @@ public class DocumentController : ControllerBase
         }
 
         ms.Position = 0;
-        var zipName = $"docs_{DateTime.UtcNow:yyyyMMdd}.zip";
+        var zipName = $"{rfcPrefix}_docs_{DateTime.UtcNow:yyyyMMdd}.zip";
         return File(ms.ToArray(), "application/zip", zipName);
     }
 

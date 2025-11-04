@@ -60,10 +60,11 @@ export const authApi = {
 }
 
 export const documentApi = {
-  upload: (file: File, templateId: number): Promise<DocumentUploadResponse> => {
+  upload: (file: File, templateId: number, batchId?: string): Promise<DocumentUploadResponse> => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('templateId', templateId.toString())
+    if (batchId) formData.append('batchId', batchId)
     
     const uploadApi = axios.create({
       baseURL: 'http://localhost:5000/api',

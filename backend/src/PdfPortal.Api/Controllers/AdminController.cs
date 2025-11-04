@@ -158,8 +158,23 @@ public class AdminController : ControllerBase
             var documentDtos = new List<AdminDocumentDto>();
             foreach (var doc in documents)
             {
-                // Parse extracted data
-                var extractedData = new ExtractedDataDto { Rfc = "N/A", Periodo = "N/A", Monto = "0" };
+                // Get source document and uploader info first
+                var sourceDoc = await _unitOfWork.DocumentOriginals.GetByIdAsync(doc.SourceDocumentId);
+                var uploaderEmail = "Unknown";
+                string uploaderRfc = "No registrado";
+                
+                if (sourceDoc != null)
+                {
+                    var uploader = await _unitOfWork.Users.GetByIdAsync(sourceDoc.UploaderUserId);
+                    if (uploader != null)
+                    {
+                        uploaderEmail = uploader.Email ?? "Unknown";
+                        uploaderRfc = uploader.Rfc ?? "No registrado";  // Use user's registered RFC
+                    }
+                }
+
+                // Parse extracted data for other fields (using user's RFC, not extracted)
+                var extractedData = new ExtractedDataDto { Rfc = uploaderRfc, Periodo = "N/A", Monto = "0" };
                 try
                 {
                     if (!string.IsNullOrEmpty(doc.ExtractedJsonData))
@@ -167,22 +182,15 @@ public class AdminController : ControllerBase
                         var jsonData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(doc.ExtractedJsonData);
                         if (jsonData != null)
                         {
-                            if (jsonData.ContainsKey("RFC")) extractedData.Rfc = jsonData["RFC"].GetString() ?? "N/A";
+                            // Extract periodo and monto (case-insensitive)
                             if (jsonData.ContainsKey("PERIODO")) extractedData.Periodo = jsonData["PERIODO"].GetString() ?? "N/A";
+                            if (jsonData.ContainsKey("periodo")) extractedData.Periodo = jsonData["periodo"].GetString() ?? extractedData.Periodo;
                             if (jsonData.ContainsKey("MONTO_TOTAL")) extractedData.Monto = jsonData["MONTO_TOTAL"].GetString() ?? "0";
+                            if (jsonData.ContainsKey("monto_total")) extractedData.Monto = jsonData["monto_total"].GetString() ?? extractedData.Monto;
                         }
                     }
                 }
                 catch { /* ignore JSON parse errors */ }
-
-                // Get source document for uploader info
-                var sourceDoc = await _unitOfWork.DocumentOriginals.GetByIdAsync(doc.SourceDocumentId);
-                var uploaderEmail = "Unknown";
-                if (sourceDoc != null)
-                {
-                    var uploader = await _unitOfWork.Users.GetByIdAsync(sourceDoc.UploaderUserId);
-                    uploaderEmail = uploader?.Email ?? "Unknown";
-                }
 
                 documentDtos.Add(new AdminDocumentDto
                 {

@@ -178,11 +178,32 @@ export const DocumentManagementPage: React.FC = () => {
 
   const handleDownloadDocument = async (doc: Document) => {
     try {
-      const blob = await adminApi.downloadDocument(doc.id)
+      const token = localStorage.getItem('token')
+      const response = await fetch(`http://localhost:5000/api/documents/processed/${doc.id}/file`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+      const blob = await response.blob()
+
+      // Prefer backend-provided filename
+      let filename: string | undefined
+      const cd = response.headers.get('content-disposition')
+      if (cd) {
+        const m = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+        if (m && m[1]) filename = m[1].replace(/['"]/g, '')
+      }
+      // Fallback to RFC prefix if available
+      if (!filename) {
+        const rfc = (doc as any)?.extractedData?.rfc
+        const prefix = rfc && typeof rfc === 'string' && rfc.length >= 4 ? rfc.slice(0, 4).toUpperCase() : 'XXXX'
+        filename = `${prefix}_document.pdf`
+      }
+
       const url = URL.createObjectURL(blob)
       const link = window.document.createElement('a')
       link.href = url
-      link.download = doc.fileName || `document_${doc.id}.pdf`
+      link.download = filename
       window.document.body.appendChild(link)
       link.click()
       window.document.body.removeChild(link)
@@ -662,7 +683,6 @@ export const DocumentManagementPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-black/60 mb-1">Período / Monto</p>
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <Calendar className="h-3 w-3 text-[#a5cc55]" />
@@ -907,7 +927,7 @@ export const DocumentManagementPage: React.FC = () => {
             {/* Document Info */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="p-3 bg-white/5 rounded-xl">
-                <p className="text-xs text-black/60 mb-1">Estado</p>
+                <span className="text-xs text-black/60 mb-1">Estado : </span>
                 <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${selectedDocument.status === 'Completado' ? 'text-green-400 bg-green-400/20' :
                   selectedDocument.status === 'Procesando' ? 'text-blue-400 bg-blue-400/20' :
                     selectedDocument.status === 'Error' ? 'text-red-400 bg-red-400/20' :
@@ -921,12 +941,8 @@ export const DocumentManagementPage: React.FC = () => {
                 </div>
               </div>
               <div className="p-3 bg-white/5 rounded-xl">
-                <p className="text-xs text-black mb-1">RFC</p>
-                <p className="text-sm text-black">{selectedDocument.extractedData.rfc}</p>
-              </div>
-              <div className="p-3 bg-white/5 rounded-xl">
-                <p className="text-xs text-black mb-1">Período</p>
-                <p className="text-sm text-black">{selectedDocument.extractedData.periodo}</p>
+                <span className="text-xs text-black mb-1">RFC  :  </span>
+                <span className="text-sm text-black">{selectedDocument.extractedData.rfc}</span>
               </div>
             </div>
           </div>

@@ -30,7 +30,9 @@ interface ReadyDocument {
   proveedorEmail: string
   complianceStatus: string  // Backend returns "ListoParaEnviar"
   readyAtUtc: string
-  uploadedAt?: string // Add uploaded timestamp if available
+  uploadedAt?: string // legacy optional
+  uploadedAtUtc?: string // prefer this from backend for batch grouping
+  uploadBatchId?: string // server-provided batch id
 }
 
 interface DocumentFolder {
@@ -353,12 +355,30 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
       // Get the blob from the response
       const blob = await response.blob()
+      
+      // Extract filename from Content-Disposition header if available
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename: string | undefined
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '')
+        }
+      }
+      
+      // Fallback: derive RFC-based name from current document metadata
+      if (!filename) {
+        const meta = readyDocs.find(d => d.id === documentId)
+        const rfcPrefix = meta?.rfcEmisor ? meta.rfcEmisor.slice(0, 4).toUpperCase() : 'XXXX'
+        filename = `${rfcPrefix}_document.pdf`
+      }
 
       // Create a download link
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `documento_${documentId}.pdf`
+      link.download = filename
 
       // Trigger the download
       document.body.appendChild(link)
@@ -387,9 +407,40 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   const groupDocumentsIntoFolders = (documents: ReadyDocument[]): DocumentFolder[] => {
     if (!documents || documents.length === 0) return []
 
-    // Sort documents by timestamp
+    // If backend provided batch ids, group strictly by them
+    const hasBatchIds = documents.some(d => !!d.uploadBatchId)
+    if (hasBatchIds) {
+      const byBatch: Record<string, ReadyDocument[]> = {}
+      for (const doc of documents) {
+        const key = doc.uploadBatchId || `__no_batch__`
+        if (!byBatch[key]) byBatch[key] = []
+        byBatch[key].push(doc)
+      }
+      const folders: DocumentFolder[] = []
+      Object.entries(byBatch).forEach(([batchId, batchDocs]) => {
+        // Use earliest upload time in the batch for naming and ordering
+        const earliest = batchDocs.reduce((min, d) => {
+          const t = new Date(d.uploadedAtUtc ?? d.uploadedAt ?? d.readyAtUtc).getTime()
+          return t < min ? t : min
+        }, Number.POSITIVE_INFINITY)
+        const uploadDateTime = new Date(earliest)
+        const formattedName = `${String(uploadDateTime.getDate()).padStart(2, '0')}/${String(uploadDateTime.getMonth() + 1).padStart(2, '0')}/${uploadDateTime.getFullYear()} ${String(uploadDateTime.getHours()).padStart(2, '0')}:${String(uploadDateTime.getMinutes()).padStart(2, '0')}:${String(uploadDateTime.getSeconds()).padStart(2, '0')}`
+        const folderId = `batch-${batchId}-${uploadDateTime.getTime()}`
+        folders.push({
+          id: folderId,
+          folderName: formattedName,
+          uploadDateTime,
+          documents: batchDocs.sort((a,b) => new Date(a.readyAtUtc).getTime() - new Date(b.readyAtUtc).getTime()),
+          documentCount: batchDocs.length
+        })
+      })
+      return folders.sort((a,b) => b.uploadDateTime.getTime() - a.uploadDateTime.getTime())
+    }
+
+    // Fallback to time-gap grouping
+    // Sort documents by original upload timestamp (prefer uploadedAtUtc, then uploadedAt, fallback to readyAtUtc)
     const sortedDocs = [...documents].sort((a, b) => 
-      new Date(a.readyAtUtc).getTime() - new Date(b.readyAtUtc).getTime()
+      new Date(a.uploadedAtUtc ?? a.uploadedAt ?? a.readyAtUtc).getTime() - new Date(b.uploadedAtUtc ?? b.uploadedAt ?? b.readyAtUtc).getTime()
     )
 
     const folders: DocumentFolder[] = []
@@ -398,19 +449,20 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     let currentBatch: ReadyDocument[] = []
 
     sortedDocs.forEach((doc) => {
-      const docTime = new Date(doc.readyAtUtc).getTime()
+      const docTime = new Date(doc.uploadedAtUtc ?? doc.uploadedAt ?? doc.readyAtUtc).getTime()
 
       if (currentBatch.length === 0) {
         // First document in a new batch
         currentBatch = [doc]
       } else {
         // Check the gap between the last document in current batch and this document
-        const lastDocTime = new Date(currentBatch[currentBatch.length - 1].readyAtUtc).getTime()
+        const last = currentBatch[currentBatch.length - 1]
+        const lastDocTime = new Date(last.uploadedAtUtc ?? last.uploadedAt ?? last.readyAtUtc).getTime()
         const gap = docTime - lastDocTime
 
         if (gap > GAP_THRESHOLD_MS) {
           // Significant gap detected - save current batch and start a new one
-          const uploadDateTime = new Date(currentBatch[0].readyAtUtc)
+          const uploadDateTime = new Date(currentBatch[0].uploadedAtUtc ?? currentBatch[0].uploadedAt ?? currentBatch[0].readyAtUtc)
           const formattedName = `${String(uploadDateTime.getDate()).padStart(2, '0')}/${String(uploadDateTime.getMonth() + 1).padStart(2, '0')}/${uploadDateTime.getFullYear()} ${String(uploadDateTime.getHours()).padStart(2, '0')}:${String(uploadDateTime.getMinutes()).padStart(2, '0')}:${String(uploadDateTime.getSeconds()).padStart(2, '0')}`
           
           // Create stable folder ID based on first document ID and timestamp
@@ -436,7 +488,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
 
     // Don't forget the last batch
     if (currentBatch.length > 0) {
-      const uploadDateTime = new Date(currentBatch[0].readyAtUtc)
+      const uploadDateTime = new Date(currentBatch[0].uploadedAtUtc ?? currentBatch[0].uploadedAt ?? currentBatch[0].readyAtUtc)
       const formattedName = `${String(uploadDateTime.getDate()).padStart(2, '0')}/${String(uploadDateTime.getMonth() + 1).padStart(2, '0')}/${uploadDateTime.getFullYear()} ${String(uploadDateTime.getHours()).padStart(2, '0')}:${String(uploadDateTime.getMinutes()).padStart(2, '0')}:${String(uploadDateTime.getSeconds()).padStart(2, '0')}`
       
       // Create stable folder ID based on first document ID and timestamp
@@ -715,8 +767,29 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         // Download each document and add to folder in ZIP
         for (const docId of documentIds) {
           try {
-            const blob = await documentApi.download(docId)
-            const fileName = `documento_${docId}.pdf`
+            // Use fetch to get both blob and headers
+            const token = localStorage.getItem('token')
+            const response = await fetch(`http://localhost:5000/api/documents/client/documents/${docId}/file`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const blob = await response.blob()
+            
+            // Extract filename from Content-Disposition header
+            let fileName: string | undefined
+            const contentDisposition = response.headers.get('content-disposition')
+            if (contentDisposition) {
+              const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+              if (filenameMatch && filenameMatch[1]) {
+                fileName = filenameMatch[1].replace(/['"]/g, '')
+              }
+            }
+            
+            if (!fileName) {
+              const meta = readyDocs.find(d => d.id === String(docId))
+              const rfcPrefix = meta?.rfcEmisor ? meta.rfcEmisor.slice(0, 4).toUpperCase() : 'XXXX'
+              fileName = `${rfcPrefix}_document.pdf`
+            }
+            
             zip.file(`${folderName}/${fileName}`, blob)
           } catch (error) {
             console.error(`Error downloading document ${docId}:`, error)
@@ -756,8 +829,29 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         for (const doc of folder.documents) {
           try {
             const docId = Number(doc.id)
-            const blob = await documentApi.download(docId)
-            const fileName = `documento_${docId}.pdf`
+            // Use fetch to get both blob and headers
+            const token = localStorage.getItem('token')
+            const response = await fetch(`http://localhost:5000/api/documents/client/documents/${docId}/file`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const blob = await response.blob()
+            
+            // Extract filename from Content-Disposition header
+            let fileName: string | undefined
+            const contentDisposition = response.headers.get('content-disposition')
+            if (contentDisposition) {
+              const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+              if (filenameMatch && filenameMatch[1]) {
+                fileName = filenameMatch[1].replace(/['"]/g, '')
+              }
+            }
+            
+            if (!fileName) {
+              const meta = readyDocs.find(d => d.id === String(docId))
+              const rfcPrefix = meta?.rfcEmisor ? meta.rfcEmisor.slice(0, 4).toUpperCase() : 'XXXX'
+              fileName = `${rfcPrefix}_document.pdf`
+            }
+            
             zip.file(`${folderName}/${fileName}`, blob)
             totalDocs++
           } catch (error) {
@@ -876,11 +970,14 @@ export const ClientReadyDocumentsPage: React.FC = () => {
     const failed: string[] = []
 
     try {
+      // Create a stable batch id for this submit click
+      const userIdPart = (user as any)?.id ?? 'u'
+      const batchId = `BATCH-${userIdPart}-${Date.now()}`
 
       // Upload files sequentially
       for (const file of selectedFiles) {
         try {
-          const uploadResult = await documentApi.upload(file, 1)
+          const uploadResult = await documentApi.upload(file, 1, batchId)
           uploaded.push(file.name)
         } catch (error) {
           console.error(`Upload failed for ${file.name}:`, error)
@@ -897,7 +994,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
       // Wait a moment for processing, then refresh
       await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds for processing
       await fetchReadyDocuments() // Refresh the documents list
-
 
       // Show success message with uploaded file names
       if (uploaded.length > 0) {
@@ -1370,14 +1466,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                                     <span className="text-xs text-black/60">RFC:</span>
                                     <span className="text-xs text-black/80 font-mono">{getDisplayValue(doc.rfcEmisor, 'RFC')}</span>
                                   </div>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-xs text-black/60">Período:</span>
-                                    <span className="text-xs text-black/80">{getDisplayValue(doc.periodo, 'PERIODO')}</span>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-xs text-black/60">Monto:</span>
-                                    <span className="text-xs text-black/80">{getDisplayValue(doc.montoTotalMxn, 'MONTO')}</span>
-                                  </div>
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2 flex-shrink-0">
@@ -1722,7 +1810,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                   <div>
                     <h3 className="text-lg sm:text-xl font-bold text-black">Documento Procesado</h3>
                     <p className="text-xs sm:text-sm text-black">
-                      RFC: {previewDocument.rfcEmisor} • Período: {getDisplayValue(previewDocument.periodo, 'PERIODO')} • Monto: {getDisplayValue(previewDocument.montoTotalMxn, 'MONTO')}
+                      RFC: {previewDocument.rfcEmisor}
                     </p>
                   </div>
                 </div>
@@ -1765,22 +1853,6 @@ export const ClientReadyDocumentsPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Document Info */}
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="p-3 bg-white/5 rounded-xl">
-                  <p className="text-xs text-black/60 mb-1">RFC Emisor</p>
-                  <p className="text-sm text-black">{previewDocument.rfcEmisor}</p>
-                </div>
-                <div className="p-3 bg-white/5 rounded-xl">
-                  <p className="text-xs text-black/60 mb-1">Período</p>
-                  <p className="text-sm text-black">{getDisplayValue(previewDocument.periodo, 'PERIODO')}</p>
-                </div>
-                <div className="p-3 bg-white/5 rounded-xl">
-                  <p className="text-xs text-black/60 mb-1">Monto Total</p>
-                  <p className="text-sm text-black">{getDisplayValue(previewDocument.montoTotalMxn, 'MONTO')}</p>
-                </div>
               </div>
             </div>
           </div>
