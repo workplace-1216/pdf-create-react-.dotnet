@@ -9,5 +9,5 @@ public interface IAuthService
     Task<string> GenerateJwtTokenAsync(User user);
     Task<User?> ValidateUserAsync(string email, string password);
     Task<User?> GetUserByIdAsync(int userId);
-    Task<bool> RegisterUserAsync(string email, string password, UserRole role);
+    Task<bool> RegisterUserAsync(string email, string password, UserRole role, string? rfc = null);
 }

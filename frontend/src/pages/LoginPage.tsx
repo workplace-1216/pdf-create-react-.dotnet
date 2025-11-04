@@ -13,10 +13,12 @@ export const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    rfc: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [rfcError, setRfcError] = useState('')
 
   // Redirect if user is already logged in
   useEffect(() => {
@@ -38,14 +40,23 @@ export const LoginPage: React.FC = () => {
       } else {
         // Validate password confirmation
         if (formData.password !== formData.confirmPassword) {
-          setError('Passwords do not match')
+          setError('Las contraseñas no coinciden')
+          setLoading(false)
+          return
+        }
+
+        // Validate RFC format
+        const rfcPattern = /^[A-Z]{4}[0-9]{6}[A-Z0-9]{3}$/
+        if (!rfcPattern.test(formData.rfc.toUpperCase())) {
+          setError('RFC inválido. Formato: 4 letras, 6 números, 3 alfanuméricos (Ej: AAAA123456ABC)')
           setLoading(false)
           return
         }
 
         const registeredUser = await register({
           email: formData.email,
-          tempPassword: formData.password
+          tempPassword: formData.password,
+          rfc: formData.rfc.toUpperCase()
         })
         // Navigate to role-based page after successful registration
         // For client users, navigate directly to client page
@@ -91,9 +102,11 @@ export const LoginPage: React.FC = () => {
     setFormData({
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      rfc: ''
     })
     setError('')
+    setRfcError('')
   }
 
   return (
@@ -142,8 +155,8 @@ export const LoginPage: React.FC = () => {
                   type="button"
                   onClick={toggleMode}
                   className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-300 ${isLogin
-                      ? 'bg-[#eb3089] text-white shadow-lg'
-                      : 'text-black hover:text-black hover:bg-gray-200'
+                    ? 'bg-[#eb3089] text-white shadow-lg'
+                    : 'text-black hover:text-black hover:bg-gray-200'
                     }`}
                 >
                   Iniciar Sesión
@@ -152,8 +165,8 @@ export const LoginPage: React.FC = () => {
                   type="button"
                   onClick={toggleMode}
                   className={`px-6 py-3 text-sm font-medium rounded-xl transition-all duration-300 ${!isLogin
-                      ? 'bg-[#eb3089] text-white shadow-lg'
-                      : 'text-black hover:text-black hover:bg-gray-200'
+                    ? 'bg-[#eb3089] text-white shadow-lg'
+                    : 'text-black hover:text-black hover:bg-gray-200'
                     }`}
                 >
                   Registrarse
@@ -192,6 +205,115 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* RFC Field (Only for Registration) */}
+                {!isLogin && (
+                  <div>
+                    <label htmlFor="rfc" className="block text-sm font-semibold text-black mb-2">
+                      RFC
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="rfc"
+                        name="rfc"
+                        type="text"
+                        autoComplete="off"
+                        required
+                        maxLength={13}
+                        value={formData.rfc}
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase()
+                          
+                          // Validate and BLOCK invalid characters based on position
+                          let validValue = ''
+                          let errorMsg = ''
+                          
+                          // Check each character based on position
+                          for (let i = 0; i < value.length; i++) {
+                            const char = value[i]
+                            let isValid = false
+                            
+                            if (i < 4) {
+                              // First 4 must be letters
+                              if (/^[A-Z]$/.test(char)) {
+                                isValid = true
+                              } else {
+                                errorMsg = `Posición ${i + 1}: Solo letras (A-Z)`
+                              }
+                            } else if (i < 10) {
+                              // Next 6 must be numbers
+                              if (/^[0-9]$/.test(char)) {
+                                isValid = true
+                              } else {
+                                errorMsg = `Posición ${i + 1}: Solo números (0-9)`
+                              }
+                            } else {
+                              // Last 3 can be letters or numbers
+                              if (/^[A-Z0-9]$/.test(char)) {
+                                isValid = true
+                              } else {
+                                errorMsg = `Posición ${i + 1}: Letras o números`
+                              }
+                            }
+                            
+                            // Only add valid characters
+                            if (isValid) {
+                              validValue += char
+                            } else {
+                              // Stop at first invalid character and show error
+                              break
+                            }
+                          }
+                          
+                          setRfcError(errorMsg)
+                          setFormData(prev => ({ ...prev, rfc: validValue }))
+                        }}
+                        className={`w-full px-4 py-3 bg-white border rounded-2xl text-black placeholder-slate-400 focus:outline-none focus:ring-2 transition-all duration-300 uppercase ${
+                          formData.rfc && /^[A-Z]{4}[0-9]{6}[A-Z0-9]{3}$/.test(formData.rfc)
+                            ? 'border-[#a5cc55] focus:ring-[#a5cc55]'
+                            : rfcError
+                              ? 'border-red-400 focus:ring-red-400'
+                              : formData.rfc.length > 0
+                                ? 'border-yellow-300 focus:ring-yellow-400'
+                                : 'border-[#64c7cd]/30 focus:ring-[#64c7cd]'
+                        }`}
+                        placeholder="AAAA123456ABC"
+                      />
+                      
+                      {/* Error Tooltip */}
+                      {rfcError && (
+                        <div className="absolute z-10 -bottom-2 left-0 transform translate-y-full mt-1">
+                          <div className="bg-red-500 text-white text-xs rounded-lg py-2 px-3 shadow-lg relative animate-pulse">
+                            <div className="absolute -top-1 left-4 w-2 h-2 bg-red-500 transform rotate-45"></div>
+                            {rfcError}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Position Guide */}
+                    {formData.rfc.length > 0 && formData.rfc.length < 13 && !rfcError && (
+                      <div className="mt-2 text-xs text-blue-600">
+                        {formData.rfc.length < 4 && (
+                          <span>✏️ Ingresa {4 - formData.rfc.length} letra(s) más</span>
+                        )}
+                        {formData.rfc.length >= 4 && formData.rfc.length < 10 && (
+                          <span>🔢 Ingresa {10 - formData.rfc.length} número(s) más</span>
+                        )}
+                        {formData.rfc.length >= 10 && formData.rfc.length < 13 && (
+                          <span>📝 Ingresa {13 - formData.rfc.length} carácter(es) más (letra o número)</span>
+                        )}
+                      </div>
+                    )}
+                    
+                    {formData.rfc && /^[A-Z]{4}[0-9]{6}[A-Z0-9]{3}$/.test(formData.rfc) && (
+                      <div className="mt-2 flex items-center space-x-2 text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                        <p className="text-sm">RFC válido ✓</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Password Field */}
                 <div>
                   <label htmlFor="password" className="block text-sm font-semibold text-black mb-2">
@@ -223,6 +345,8 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
+
+
                 {/* Confirm Password Field */}
                 {!isLogin && (
                   <div>
@@ -239,10 +363,10 @@ export const LoginPage: React.FC = () => {
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
                         className={`w-full px-4 py-3 bg-white border rounded-2xl text-black placeholder-slate-400 focus:outline-none focus:ring-2 transition-all duration-300 pr-12 ${formData.confirmPassword && formData.password !== formData.confirmPassword
-                            ? 'border-red-300 focus:ring-red-400'
-                            : formData.confirmPassword && formData.password === formData.confirmPassword
-                              ? 'border-[#a5cc55] focus:ring-[#a5cc55]'
-                              : 'border-[#64c7cd]/30 focus:ring-[#64c7cd]'
+                          ? 'border-red-300 focus:ring-red-400'
+                          : formData.confirmPassword && formData.password === formData.confirmPassword
+                            ? 'border-[#a5cc55] focus:ring-[#a5cc55]'
+                            : 'border-[#64c7cd]/30 focus:ring-[#64c7cd]'
                           }`}
                         placeholder="••••••••"
                       />

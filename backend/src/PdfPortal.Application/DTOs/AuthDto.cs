@@ -18,6 +18,7 @@ public class RegisterVendorRequest
 {
     public string Email { get; set; } = string.Empty;
     public string TempPassword { get; set; } = string.Empty;
+    public string? Rfc { get; set; }
 }
 
 public class RegisterVendorResponse

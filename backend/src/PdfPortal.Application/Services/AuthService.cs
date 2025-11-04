@@ -31,7 +31,7 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<bool> RegisterUserAsync(string email, string password, UserRole role)
+    public async Task<bool> RegisterUserAsync(string email, string password, UserRole role, string? rfc = null)
     {
         var existingUser = await _unitOfWork.Users.FindAsync(u => u.Email == email);
         if (existingUser.Any())
@@ -41,7 +41,8 @@ public class AuthService : IAuthService
         {
             Email = email,
             PasswordHash = _passwordHasher.HashPassword(password),
-            Role = role
+            Role = role,
+            Rfc = rfc
         };
 
         await _unitOfWork.Users.AddAsync(user);

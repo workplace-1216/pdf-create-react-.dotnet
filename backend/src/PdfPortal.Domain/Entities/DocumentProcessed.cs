@@ -36,6 +36,11 @@ public class DocumentProcessed
     public ProcessedDocumentStatus Status { get; set; } = ProcessedDocumentStatus.Pending;
     
     public bool IsDeletedByClient { get; set; } = false;
+    
+    // Tracks whether document has been sent to admin via "Enviar" button
+    public bool IsSentToAdmin { get; set; } = false;
+    
+    public DateTime? SentToAdminAt { get; set; }
 }
 
 public enum ProcessedDocumentStatus

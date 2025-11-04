@@ -29,13 +29,14 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var totalDocuments = await _unitOfWork.DocumentProcessed.CountAsync(d => true);
+            // Admin stats should only count documents that have been sent by clients
+            var totalDocuments = await _unitOfWork.DocumentProcessed.CountAsync(d => d.IsSentToAdmin);
             var processedDocuments = await _unitOfWork.DocumentProcessed.CountAsync(d => 
-                d.Status == ProcessedDocumentStatus.Approved);
+                d.IsSentToAdmin && d.Status == ProcessedDocumentStatus.Approved);
             var pendingDocuments = await _unitOfWork.DocumentProcessed.CountAsync(d => 
-                d.Status == ProcessedDocumentStatus.Pending);
+                d.IsSentToAdmin && d.Status == ProcessedDocumentStatus.Pending);
             var errorDocuments = await _unitOfWork.DocumentProcessed.CountAsync(d => 
-                d.Status == ProcessedDocumentStatus.Rejected);
+                d.IsSentToAdmin && d.Status == ProcessedDocumentStatus.Rejected);
             
             var totalUsers = await _unitOfWork.Users.CountAsync(u => true);
             var activeUsers = await _unitOfWork.Users.CountAsync(u => u.Role == UserRole.Client);
@@ -134,12 +135,16 @@ public class AdminController : ControllerBase
     {
         try
         {
-            Expression<Func<DocumentProcessed, bool>> predicate = d => true;
+            // Admin should ONLY see documents that clients have sent
+            Expression<Func<DocumentProcessed, bool>> predicate = d => d.IsSentToAdmin;
+            
+            Console.WriteLine($"[AdminController] GetDocuments - Page: {page}, PageSize: {pageSize}, Status: {status}");
 
             if (!string.IsNullOrEmpty(status) && status != "All")
             {
                 var statusEnum = Enum.Parse<ProcessedDocumentStatus>(status);
-                predicate = d => d.Status == statusEnum;
+                var basePredicate = predicate;
+                predicate = d => basePredicate.Compile()(d) && d.Status == statusEnum;
             }
 
             var totalCount = await _unitOfWork.DocumentProcessed.CountAsync(predicate);
@@ -288,12 +293,12 @@ public class AdminController : ControllerBase
 
             var since = DateTime.UtcNow.Date.AddDays(-days + 1);
 
-            // Base datasets
-            var processedDocs = await _unitOfWork.DocumentProcessed.FindAsync(d => d.CreatedAt >= since);
-            var totalDocsCount = await _unitOfWork.DocumentProcessed.CountAsync(d => true);
-            var processedToday = await _unitOfWork.DocumentProcessed.CountAsync(d => d.CreatedAt >= DateTime.UtcNow.Date);
-            var errorDocsCount = await _unitOfWork.DocumentProcessed.CountAsync(d => d.Status == ProcessedDocumentStatus.Rejected);
-            var pendingDocsCount = await _unitOfWork.DocumentProcessed.CountAsync(d => d.Status == ProcessedDocumentStatus.Pending);
+            // Base datasets - only count documents sent to admin
+            var processedDocs = await _unitOfWork.DocumentProcessed.FindAsync(d => d.IsSentToAdmin && d.CreatedAt >= since);
+            var totalDocsCount = await _unitOfWork.DocumentProcessed.CountAsync(d => d.IsSentToAdmin);
+            var processedToday = await _unitOfWork.DocumentProcessed.CountAsync(d => d.IsSentToAdmin && d.CreatedAt >= DateTime.UtcNow.Date);
+            var errorDocsCount = await _unitOfWork.DocumentProcessed.CountAsync(d => d.IsSentToAdmin && d.Status == ProcessedDocumentStatus.Rejected);
+            var pendingDocsCount = await _unitOfWork.DocumentProcessed.CountAsync(d => d.IsSentToAdmin && d.Status == ProcessedDocumentStatus.Pending);
             var usersCount = await _unitOfWork.Users.CountAsync(u => true);
             var activeUsers = await _unitOfWork.Users.CountAsync(u => u.Role == UserRole.Client);
 
@@ -386,7 +391,7 @@ public class AdminController : ControllerBase
     {
         var today = DateTime.UtcNow.Date;
         return await _unitOfWork.DocumentProcessed.CountAsync(d => 
-            d.CreatedAt >= today && d.Status == ProcessedDocumentStatus.Approved);
+            d.IsSentToAdmin && d.CreatedAt >= today && d.Status == ProcessedDocumentStatus.Approved);
     }
 
     private string GetDocumentStatusString(ProcessedDocumentStatus status)

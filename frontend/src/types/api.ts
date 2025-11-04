@@ -18,6 +18,7 @@ export interface LoginResponse {
 export interface RegisterRequest {
   email: string
   tempPassword: string
+  rfc?: string
   role?: 'Admin' | 'Client'
 }
 

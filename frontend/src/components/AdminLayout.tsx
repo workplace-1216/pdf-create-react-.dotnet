@@ -9,6 +9,7 @@ import {
   PieChart,
   MoreHorizontal
 } from 'lucide-react'
+import { NotificationBell } from './NotificationBell'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -188,6 +189,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <p className="text-sm text-black">Sistema de gestión integral</p>
               </div>
             </div>
+            {/* Notification Bell */}
+            <NotificationBell />
           </div>
         </div>
 

@@ -13,6 +13,7 @@ public class PdfPortalDbContext : DbContext
     public DbSet<TemplateRuleSet> TemplateRuleSets { get; set; }
     public DbSet<DocumentOriginal> DocumentOriginals { get; set; }
     public DbSet<DocumentProcessed> DocumentProcessed { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

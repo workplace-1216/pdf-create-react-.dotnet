@@ -41,8 +41,18 @@ public class AuthController : ControllerBase
     {
         try
         {
+            // Validate RFC if provided
+            if (!string.IsNullOrEmpty(request.Rfc))
+            {
+                var rfcPattern = @"^[A-Z]{4}[0-9]{6}[A-Z0-9]{3}$";
+                if (!System.Text.RegularExpressions.Regex.IsMatch(request.Rfc, rfcPattern))
+                {
+                    return BadRequest("RFC inválido. Formato: 4 letras, 6 números, 3 alfanuméricos (Ej: AAAA123456ABC)");
+                }
+            }
+
             // Create Client users by default
-            var success = await _authService.RegisterUserAsync(request.Email, request.TempPassword, UserRole.Client);
+            var success = await _authService.RegisterUserAsync(request.Email, request.TempPassword, UserRole.Client, request.Rfc);
             if (!success)
             {
                 return BadRequest("Email already exists");

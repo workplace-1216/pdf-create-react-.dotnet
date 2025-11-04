@@ -6,6 +6,7 @@ using PdfPortal.Application.Interfaces;
 using PdfPortal.Application.Models;
 using PdfPortal.Application.Services;
 using PdfPortal.Domain.Entities;
+using PdfPortal.Infrastructure.Data;
 using System.IO.Compression;
 using System.Net.Mail;
 using System.Text.Json;
@@ -25,6 +26,8 @@ public class DocumentController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IGptService _gptService;
 
+    private readonly PdfPortalDbContext _context;
+
     public DocumentController(
         DocumentService documentService,
         IPdfStorageService pdfStorageService,
@@ -32,7 +35,8 @@ public class DocumentController : ControllerBase
         IUnitOfWork unitOfWork,
         TemplateRuleParser templateRuleParser,
         IConfiguration configuration,
-        IGptService gptService)
+        IGptService gptService,
+        PdfPortalDbContext context)
     {
         _documentService = documentService;
         _pdfStorageService = pdfStorageService;
@@ -41,6 +45,7 @@ public class DocumentController : ControllerBase
         _templateRuleParser = templateRuleParser;
         _configuration = configuration;
         _gptService = gptService;
+        _context = context;
     }
 
     [HttpPost("upload")]
@@ -267,17 +272,33 @@ public class DocumentController : ControllerBase
             var userRole = CurrentUserHelper.GetCurrentUserRole(HttpContext);
             var userId = CurrentUserHelper.GetCurrentUserId(HttpContext);
 
-            // Admins can see ALL documents (including those marked as deleted by clients)
-            // This endpoint is primarily for admin document management
-            var processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(d => 
-                d.Status == ProcessedDocumentStatus.Approved);
+            Console.WriteLine($"[DocumentController] GetProcessedDocuments - Role: {userRole}, UserId: {userId}");
 
-            // If vendorId is specified and user is not admin, filter by vendorId
-            if (vendorId.HasValue && userRole != "Admin")
+            // Admins should only see documents that have been sent to them (IsSentToAdmin = true)
+            // Clients see their own uploaded documents
+            IEnumerable<DocumentProcessed> processedDocuments;
+            
+            if (userRole == "Admin")
             {
-                var vendorDocuments = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == vendorId.Value);
-                var vendorDocumentIds = vendorDocuments.Select(d => d.Id).ToHashSet();
-                processedDocuments = processedDocuments.Where(d => vendorDocumentIds.Contains(d.SourceDocumentId));
+                // Admin sees only documents that clients have sent
+                processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(d => 
+                    d.Status == ProcessedDocumentStatus.Approved && d.IsSentToAdmin);
+                Console.WriteLine($"[DocumentController] Admin query: Found {processedDocuments.Count()} sent documents");
+            }
+            else
+            {
+                // Clients see their own uploaded documents
+                processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(d => 
+                    d.Status == ProcessedDocumentStatus.Approved);
+                    
+                // Filter by vendorId if specified
+                if (vendorId.HasValue)
+                {
+                    var vendorDocuments = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == vendorId.Value);
+                    var vendorDocumentIds = vendorDocuments.Select(d => d.Id).ToHashSet();
+                    processedDocuments = processedDocuments.Where(d => vendorDocumentIds.Contains(d.SourceDocumentId));
+                }
+                Console.WriteLine($"[DocumentController] Client query: Found {processedDocuments.Count()} documents");
             }
 
             var documents = new List<ProcessedDocumentDto>();
@@ -850,11 +871,77 @@ public class DocumentController : ControllerBase
             }
 
             await client.SendMailAsync(message);
+            
+            // Mark documents as sent to admin
+            await MarkDocumentsAsSentToAdmin(request.DocumentIds);
+            
+            // Create notification for admin
+            await CreateNotificationForAdmin(request.DocumentIds.Count);
+            
             return Ok(new { status = "sent", to = toEmail, subject });
         }
 
-        // If SMTP not configured, acknowledge request
+        // If SMTP not configured, acknowledge request but still mark documents as sent and create notification
+        await MarkDocumentsAsSentToAdmin(request.DocumentIds);
+        await CreateNotificationForAdmin(request.DocumentIds.Count);
         return Ok(new { status = "queued", to = toEmail, subject });
+    }
+    
+    private async Task MarkDocumentsAsSentToAdmin(List<int> documentIds)
+    {
+        try
+        {
+            Console.WriteLine($"[DocumentController] 📧 Marking {documentIds.Count} documents as sent to admin...");
+            var now = DateTime.UtcNow;
+            
+            foreach (var id in documentIds)
+            {
+                var doc = await _unitOfWork.DocumentProcessed.GetByIdAsync(id);
+                if (doc != null)
+                {
+                    doc.IsSentToAdmin = true;
+                    doc.SentToAdminAt = now;
+                }
+            }
+            
+            await _unitOfWork.SaveChangesAsync();
+            Console.WriteLine($"[DocumentController] ✅ Documents marked as sent successfully");
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the request if marking fails
+            Console.WriteLine($"[DocumentController] ❌ Failed to mark documents as sent: {ex.Message}");
+        }
+    }
+    
+    private async Task CreateNotificationForAdmin(int documentCount)
+    {
+        try
+        {
+            Console.WriteLine($"[DocumentController] 🔔 Creating notification...");
+            var currentUserId = CurrentUserHelper.GetCurrentUserId(HttpContext);
+            Console.WriteLine($"[DocumentController] Client User ID: {currentUserId}");
+            Console.WriteLine($"[DocumentController] Document Count: {documentCount}");
+            
+            var notification = new Domain.Entities.Notification
+            {
+                ClientUserId = currentUserId,
+                DocumentCount = documentCount,
+                SentAt = DateTime.UtcNow,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"[DocumentController] ✅ Notification created successfully (ID: {notification.Id})");
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the request if notification creation fails
+            Console.WriteLine($"[DocumentController] ❌ Failed to create notification: {ex.Message}");
+            Console.WriteLine($"[DocumentController] Stack trace: {ex.StackTrace}");
+        }
     }
 
     [HttpPost("processed/delete-batch")]

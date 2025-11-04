@@ -11,6 +11,9 @@ public class User
     [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
     
+    [MaxLength(13)]
+    public string? Rfc { get; set; }
+    
     [Required]
     [MaxLength(255)]
     public string PasswordHash { get; set; } = string.Empty;

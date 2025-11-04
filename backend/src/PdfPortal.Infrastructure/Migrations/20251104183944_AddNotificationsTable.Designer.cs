@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PdfPortal.Infrastructure.Data;
@@ -11,9 +12,11 @@ using PdfPortal.Infrastructure.Data;
 namespace PdfPortal.Infrastructure.Migrations
 {
     [DbContext(typeof(PdfPortalDbContext))]
-    partial class PdfPortalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251104183944_AddNotificationsTable")]
+    partial class AddNotificationsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -93,12 +96,6 @@ namespace PdfPortal.Infrastructure.Migrations
 
                     b.Property<bool>("IsDeletedByClient")
                         .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSentToAdmin")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("SentToAdminAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("SourceDocumentId")
                         .HasColumnType("integer");
@@ -204,10 +201,6 @@ namespace PdfPortal.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
-
-                    b.Property<string>("Rfc")
-                        .HasMaxLength(13)
-                        .HasColumnType("character varying(13)");
 
                     b.Property<int>("Role")
                         .HasColumnType("integer");

@@ -96,6 +96,15 @@ export const documentApi = {
   sendByEmail: (documentIds: number[], toEmail?: string): Promise<{ status: string; to: string; subject: string }> =>
     api.post('/documents/processed/send-email', { documentIds, toEmail })
        .then((res: AxiosResponse<{ status: string; to: string; subject: string }>) => res.data),
+
+  getNotifications: (): Promise<any[]> =>
+    api.get('/notification').then((res: AxiosResponse<any[]>) => res.data),
+
+  markNotificationAsRead: (id: number): Promise<void> =>
+    api.put(`/notification/${id}/read`).then(() => {}),
+
+  clearAllNotifications: (): Promise<void> =>
+    api.delete('/notification').then(() => {}),
 }
 
 export const templateApi = {
