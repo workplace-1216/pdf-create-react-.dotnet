@@ -11,7 +11,17 @@ public class CreateDefaultAdmin
 {
     public static async Task CreateAdminUser()
     {
-        var connectionString = "Host=localhost;Database=pdfportal;Username=postgres;Password=123";
+        // Load environment variables
+        DotNetEnv.Env.Load();
+        
+        // Build connection string from environment variables
+        var host = Environment.GetEnvironmentVariable("DATABASE_HOST") ?? "localhost";
+        var port = Environment.GetEnvironmentVariable("DATABASE_PORT") ?? "5432";
+        var database = Environment.GetEnvironmentVariable("DATABASE_NAME") ?? "pdfportal";
+        var username = Environment.GetEnvironmentVariable("DATABASE_USER") ?? "postgres";
+        var password = Environment.GetEnvironmentVariable("DATABASE_PASSWORD") ?? "123";
+        
+        var connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password}";
         
         var options = new DbContextOptionsBuilder<PdfPortalDbContext>()
             .UseNpgsql(connectionString)
@@ -31,8 +41,8 @@ public class CreateDefaultAdmin
         // Create default admin user with simple SHA256 hash (matching the old implementation)
         var admin = new User
         {
-            Email = "admin@admin.com",
-            PasswordHash = HashPassword("Admin123!"),
+            Email = "meguiazt@gmail.com",
+            PasswordHash = HashPassword("pon87654321"),
             Role = UserRole.Admin,
             CreatedAt = DateTime.UtcNow
         };
@@ -41,8 +51,8 @@ public class CreateDefaultAdmin
         await context.SaveChangesAsync();
 
         Console.WriteLine("Default admin user created:");
-        Console.WriteLine("Email: admin@admin.com");
-        Console.WriteLine("Password: Admin123!");
+        Console.WriteLine("Email: meguiazt@gmail.com");
+        Console.WriteLine("Password: pon87654321");
     }
 
     private static string HashPassword(string password)

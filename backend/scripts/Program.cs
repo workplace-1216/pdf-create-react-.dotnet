@@ -1,18 +1,22 @@
 using PdfPortal.Scripts;
 
-namespace PdfPortal.Scripts;
+Console.WriteLine("===========================================");
+Console.WriteLine("  Creating Default Admin User");
+Console.WriteLine("===========================================");
+Console.WriteLine();
 
-class Program
+try
 {
-    static async Task Main(string[] args)
-    {
-        try
-        {
-            await CreateDefaultAdmin.CreateAdminUser();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-        }
-    }
+    await CreateDefaultAdmin.CreateAdminUser();
+    Console.WriteLine();
+    Console.WriteLine("✓ Success!");
 }
+catch (Exception ex)
+{
+    Console.WriteLine();
+    Console.WriteLine($"✗ Error: {ex.Message}");
+    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+    return 1;
+}
+
+return 0;

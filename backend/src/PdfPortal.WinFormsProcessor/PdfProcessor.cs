@@ -148,9 +148,16 @@ public class PdfProcessor
             
             // Escape special characters for PDF content (will be done in EscapePdfString method)
             
+            // Split title into multiple lines if too long (max 50 chars per line for font 26)
+            var titleLines = SplitTextIntoLines(displayTitle, 30);
+            
             // Split summary and contact info into lines if too long
             var summaryLines = SplitTextIntoLines(displaySummary, 70);
-            var contactLines = SplitTextIntoLines(displayContactInfo, 70);
+            var contactLines = SplitTextIntoLines(displayContactInfo, 60);
+            
+            // Extract email from contact info for separate positioning
+            var emailMatch = System.Text.RegularExpressions.Regex.Match(displayContactInfo, @"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}");
+            var extractedEmail = emailMatch.Success ? emailMatch.Value : displayEmail;
             
             var pdfContent = @"%PDF-1.4
 1 0 obj
@@ -246,67 +253,42 @@ endobj
  f
  Q
 BT
-/F1 26 Tf
-40 690 Td
-(" + EscapePdfString(displayTitle) + @") Tj
-0 0 0 rg
-/F2 12 Tf
-0 -40 Td";
+/F1 24 Tf
+70 730 Td";
 
-            // Add summary lines
-            var currentY = -40;
-            if (summaryLines.Count > 0)
+            // Add title lines (multi-line support for long titles)
+            if (titleLines.Count > 0)
             {
-                foreach (var line in summaryLines)
+                pdfContent += "\n(" + EscapePdfString(titleLines[0]) + ") Tj";
+                for (int i = 1; i < titleLines.Count; i++)
                 {
-                    pdfContent += "\n(" + EscapePdfString(line) + ") Tj\n0 -14 Td";
-                    currentY -= 14;
+                    pdfContent += "\n0 -28 Td\n(" + EscapePdfString(titleLines[i]) + ") Tj";
                 }
             }
             else
             {
-                // If no summary, add a default message or leave blank
-                pdfContent += "\n(No hay resumen disponible.) Tj\n0 -14 Td";
+                pdfContent += "\n(Untitled) Tj";
             }
 
-            // Add contact information section
-            if (contactLines.Count > 0)
+            // Add summary section with improved spacing
+            pdfContent += "\n0 0 0 rg\n/F2 14 Tf\n0 -50 Td";
+            
+            var currentY = -50;
+            if (summaryLines.Count > 0)
             {
-                pdfContent += "\n0 -24 Td\n/F1 16 Tf\n(Informacion de Contacto:) Tj\n/F2 12 Tf\n0 -20 Td";
-                currentY -= 44;
-                
-                foreach (var line in contactLines)
+                foreach (var line in summaryLines)
                 {
-                    pdfContent += "\n(" + EscapePdfString(line) + ") Tj\n0 -14 Td";
-                    currentY -= 14;
+                    pdfContent += "\n(" + EscapePdfString(line) + ") Tj\n0 -18 Td";
+                    currentY -= 18;
                 }
+            }
+            else
+            {
+                pdfContent += "\n(No hay resumen disponible.) Tj\n0 -18 Td";
             }
 
             pdfContent += "\nET\n";
-            pdfContent += @"0.392 0.78 0.804 rg
-190 320 215 30 re
-f
-BT
-1 1 1 rg
-/F1 13 Tf
-230 330 Td
-(Cupo para 30 personas) Tj
-0 0 0 rg
-/F1 14 Tf
-210 -40 Td
-($250 pesos por persona.) Tj
-/F2 11 Tf
-225 -18 Td
-(Incluye:) Tj
-210 -12 Td
-(refrigerio y estacionamiento) Tj
-/F1 16 Tf
-80 -30 Td
-(Proximo 21 de noviembre) Tj
-270 0 Td
-(Hora: 9 Am) Tj
-ET
-q
+            pdfContent += @"q
 0.7 0.7 0.7 RG
 1 w
 30 75 m
@@ -315,9 +297,33 @@ S
 Q
 BT
 0 0 0 rg
+/F2 12 Tf
+40 90 Td";
+
+            // Add contact information in footer
+            if (contactLines.Count > 0)
+            {
+                // Filter out email from contact lines since it will be positioned separately
+                var contactLinesWithoutEmail = contactLines
+                    .Where(line => !line.Contains("@"))
+                    .ToList();
+                
+                foreach (var line in contactLinesWithoutEmail)
+                {
+                    pdfContent += "\n(" + EscapePdfString(line) + ") Tj\n0 -16 Td";
+                }
+            }
+            
+            pdfContent += @"
+ET
+BT
+0 0 0 rg
 /F2 11 Tf
 45 50 Td
 (Agenda tu visita al) Tj
+/F2 10 Tf
+405 35 Td
+(" + EscapePdfString(extractedEmail) + @") Tj
 ET
 q
 0.145 0.827 0.4 rg
@@ -373,10 +379,6 @@ BT
 62 30 Td
 0.165 0.639 0.376 rg
 (6643864700) Tj
-0 0 0 rg
-/F2 12 Tf
-85 0 Td
-(" + displayEmail + @") Tj
 ET
 endstream
 endobj
