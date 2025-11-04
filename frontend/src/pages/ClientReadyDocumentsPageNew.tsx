@@ -402,6 +402,25 @@ export const ClientReadyDocumentsPage: React.FC = () => {
   const [uploadedFileNames, setUploadedFileNames] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Ensure filename uniqueness within a ZIP folder to avoid overwrites
+  const ensureUniqueFileName = (proposedName: string, usedNames: Set<string>): string => {
+    if (!usedNames.has(proposedName)) {
+      usedNames.add(proposedName)
+      return proposedName
+    }
+    const dot = proposedName.lastIndexOf('.')
+    const base = dot >= 0 ? proposedName.substring(0, dot) : proposedName
+    const ext = dot >= 0 ? proposedName.substring(dot) : ''
+    let counter = 2
+    let candidate = `${base}-${counter}${ext}`
+    while (usedNames.has(candidate)) {
+      counter++
+      candidate = `${base}-${counter}${ext}`
+    }
+    usedNames.add(candidate)
+    return candidate
+  }
+
   // Group documents into folders by upload batch (gap detection approach)
   // Each upload batch creates a new folder. A gap of more than 10 seconds between consecutive documents indicates a new batch
   const groupDocumentsIntoFolders = (documents: ReadyDocument[]): DocumentFolder[] => {
@@ -763,6 +782,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         // Create ZIP with folder structure
         const zip = new JSZip()
         const folderName = selectedFolder.folderName.replace(/\//g, '-').replace(/\s/g, '_')
+        const usedNames = new Set<string>()
         
         // Download each document and add to folder in ZIP
         for (const docId of documentIds) {
@@ -789,8 +809,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               const rfcPrefix = meta?.rfcEmisor ? meta.rfcEmisor.slice(0, 4).toUpperCase() : 'XXXX'
               fileName = `${rfcPrefix}_document.pdf`
             }
-            
-            zip.file(`${folderName}/${fileName}`, blob)
+            // Ensure unique name inside this folder
+            const uniqueName = ensureUniqueFileName(fileName, usedNames)
+            zip.file(`${folderName}/${uniqueName}`, blob)
           } catch (error) {
             console.error(`Error downloading document ${docId}:`, error)
           }
@@ -824,6 +845,7 @@ export const ClientReadyDocumentsPage: React.FC = () => {
         
         // Sanitize folder name for file system
         const folderName = folder.folderName.replace(/\//g, '-').replace(/\s/g, '_')
+        const usedNames = new Set<string>()
         
         // Download each document in this folder and add to ZIP
         for (const doc of folder.documents) {
@@ -851,8 +873,9 @@ export const ClientReadyDocumentsPage: React.FC = () => {
               const rfcPrefix = meta?.rfcEmisor ? meta.rfcEmisor.slice(0, 4).toUpperCase() : 'XXXX'
               fileName = `${rfcPrefix}_document.pdf`
             }
-            
-            zip.file(`${folderName}/${fileName}`, blob)
+            // Ensure unique name inside this folder
+            const uniqueName = ensureUniqueFileName(fileName, usedNames)
+            zip.file(`${folderName}/${uniqueName}`, blob)
             totalDocs++
           } catch (error) {
             console.error(`Error downloading document ${doc.id}:`, error)
