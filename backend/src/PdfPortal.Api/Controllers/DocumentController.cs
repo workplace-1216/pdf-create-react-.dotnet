@@ -7,6 +7,7 @@ using PdfPortal.Application.Models;
 using PdfPortal.Application.Services;
 using PdfPortal.Domain.Entities;
 using PdfPortal.Infrastructure.Data;
+using System.IO;
 using System.IO.Compression;
 using System.Net.Mail;
 using System.Text.Json;
@@ -78,9 +79,20 @@ public class DocumentController : ControllerBase
             {
                 return BadRequest($"Authentication error: {ex.Message}");
             }
+            // Read uploaded PDF into memory once
+            byte[] pdfBytes;
+            using (var ms = new MemoryStream())
+            {
+                await file.CopyToAsync(ms);
+                pdfBytes = ms.ToArray();
+            }
             
-            // Store original PDF
-            var originalPdfPath = await _pdfStorageService.SaveOriginalPdfAsync(file.OpenReadStream(), file.FileName);
+            // Store original PDF in Cloudflare R2 (do not save to local filesystem)
+            string originalPdfPath;
+            using (var saveStream = new MemoryStream(pdfBytes))
+            {
+                originalPdfPath = await _pdfStorageService.SaveOriginalPdfAsync(saveStream, file.FileName);
+            }
             
             // Create document record
             var document = new DocumentOriginal
@@ -144,8 +156,7 @@ public class DocumentController : ControllerBase
                 }
             }
 
-            // Process document
-            var pdfBytes = await System.IO.File.ReadAllBytesAsync(originalPdfPath);
+            // Process document using the in-memory bytes (avoid reading from local filesystem)
             
             // STEP 1: Extract text from PDF using PdfProcessor
             Console.WriteLine("==========================================================");
@@ -241,7 +252,7 @@ public class DocumentController : ControllerBase
             
             var processedFileName = $"{rfcPrefix}-{sequentialNumber:D4}_document.pdf";
             Console.WriteLine($"[DocumentController] 📝 Generated processed filename: {processedFileName}");
-            
+
             // Store processed document
             var processedPdfPath = await _pdfStorageService.SaveProcessedPdfAsync(processingResult.FinalPdfBytes, processedFileName);
             
@@ -307,14 +318,14 @@ public class DocumentController : ControllerBase
             {
                 // Clients see their own uploaded documents
                 processedDocuments = await _unitOfWork.DocumentProcessed.FindAsync(d => 
-                    d.Status == ProcessedDocumentStatus.Approved);
-                    
+                d.Status == ProcessedDocumentStatus.Approved);
+
                 // Filter by vendorId if specified
                 if (vendorId.HasValue)
-                {
-                    var vendorDocuments = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == vendorId.Value);
-                    var vendorDocumentIds = vendorDocuments.Select(d => d.Id).ToHashSet();
-                    processedDocuments = processedDocuments.Where(d => vendorDocumentIds.Contains(d.SourceDocumentId));
+            {
+                var vendorDocuments = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == vendorId.Value);
+                var vendorDocumentIds = vendorDocuments.Select(d => d.Id).ToHashSet();
+                processedDocuments = processedDocuments.Where(d => vendorDocumentIds.Contains(d.SourceDocumentId));
                 }
                 Console.WriteLine($"[DocumentController] Client query: Found {processedDocuments.Count()} documents");
             }

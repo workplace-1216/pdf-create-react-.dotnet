@@ -3,7 +3,7 @@ using PdfPortal.Infrastructure.Data;
 using PdfPortal.Domain.Entities;
 
 // Create a simple script to add a default template
-var connectionString = "Host=localhost;Database=pdfportal;Username=postgres;Password=postgres";
+var connectionString = "Host=localhost;Database=pdfportal;Username=postgres;Password=123";
 
 var options = new DbContextOptionsBuilder<PdfPortalDbContext>()
     .UseNpgsql(connectionString)

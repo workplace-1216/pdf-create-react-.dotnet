@@ -1,6 +1,6 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=pdfportal;Username=postgres;Password=YOUR_PASSWORD_HERE;SSL Mode=Disable"
+    "DefaultConnection": "Host=localhost;Database=pdfportal;Username=postgres;Password=123;SSL Mode=Disable"
   },
   "Jwt": {
     "Key": "YOUR_JWT_SECRET_KEY_AT_LEAST_32_CHARACTERS_LONG",

@@ -143,12 +143,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<PdfPortalDbContext>();
     context.Database.EnsureCreated();
-    
-    // Create storage directories
-    var storagePath = Path.Combine(app.Environment.ContentRootPath, "storage");
-    Directory.CreateDirectory(Path.Combine(storagePath, "original"));
-    Directory.CreateDirectory(Path.Combine(storagePath, "processed"));
-    Directory.CreateDirectory(Path.Combine(storagePath, "temp"));
+    // NOTE: Removed local storage folder creation; PDFs are stored in Cloudflare R2.
 }
 
 app.Run();

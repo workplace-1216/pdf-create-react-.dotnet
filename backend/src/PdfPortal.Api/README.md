@@ -21,7 +21,7 @@ DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_NAME=pdfportal
 DATABASE_USER=postgres
-DATABASE_PASSWORD=your_password_here
+DATABASE_PASSWORD=123
 
 # JWT Configuration
 JWT_SECRET_KEY=your_jwt_secret_key_at_least_32_characters_long
@@ -32,6 +32,16 @@ JWT_EXPIRY_MINUTES=60
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-4-turbo-preview
+
+# Cloudflare R2 (S3-compatible)
+# Provide either R2_ACCOUNT_ID and leave R2_ENDPOINT empty (it will be built),
+# or set R2_ENDPOINT explicitly (e.g. https://<account-id>.r2.cloudflarestorage.com)
+R2_ACCOUNT_ID=
+R2_ENDPOINT=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_ORIGINAL_BUCKET=pdf-uploaded
+R2_PROCESSED_BUCKET=pdf-processed
 
 # Application Configuration
 ASPNETCORE_ENVIRONMENT=Development

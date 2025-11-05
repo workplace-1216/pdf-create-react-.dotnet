@@ -94,7 +94,7 @@ Edit `backend/src/PdfPortal.Api/appsettings.json`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=pdfportal;Username=postgres;Password=postgres"
+    "DefaultConnection": "Host=localhost;Database=pdfportal;Username=postgres;Password=123"
   },
   "JwtSettings": {
     "SecretKey": "YourSuperSecretKeyThatIsAtLeast32CharactersLong!",
@@ -252,7 +252,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=pdfportal;Username=postgres;Password=postgres
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=pdfportal;Username=postgres;Password=123
     depends_on:
       - postgres
   

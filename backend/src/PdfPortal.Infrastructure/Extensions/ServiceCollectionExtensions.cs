@@ -36,7 +36,7 @@ public static class ServiceCollectionExtensions
         {
             // Fall back to appsettings.json
             connectionString = configuration.GetConnectionString("DefaultConnection") 
-                ?? "Host=localhost;Database=pdfportal;Username=postgres;Password=postgres;SSL Mode=Disable";
+                ?? "Host=localhost;Database=pdfportal;Username=postgres;Password=123;SSL Mode=Disable";
             Console.WriteLine("✓ Using database connection from appsettings.json");
         }
         
@@ -50,7 +50,9 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient(); // Add HttpClient for GPT service
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPdfProcessingService, PdfProcessingService>();
-        services.AddScoped<IPdfStorageService, PdfStorageService>();
+        // Storage: ALWAYS use Cloudflare R2 (read credentials from .env)
+        Console.WriteLine("✓ Using Cloudflare R2 storage");
+        services.AddScoped<IPdfStorageService, CloudflareR2StorageService>();
         services.AddScoped<ITemplateProcessorService, TemplateProcessorService>();
         services.AddScoped<IGptService, GptService>();
         services.AddScoped<TemplateRuleParser>();
