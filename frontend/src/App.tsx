@@ -10,6 +10,7 @@ import { ClientReadyDocumentsPage } from './pages/ClientReadyDocumentsPageNew'
 import { TemplatesPage } from './pages/TemplatesPage'
 import { AdminLayout } from './components/AdminLayout'
 import { ClientLayout } from './components/ClientLayout'
+import { AdminNotificationsPage } from './pages/AdminNotificationsPage'
 
 function App() {
   return (
@@ -56,6 +57,13 @@ function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <TemplatesPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/notifications" element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <AdminNotificationsPage />
               </AdminLayout>
             </ProtectedRoute>
           } />

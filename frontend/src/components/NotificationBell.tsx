@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bell } from 'lucide-react'
 import { documentApi } from '../services/api'
 
@@ -11,6 +12,7 @@ interface Notification {
 }
 
 export const NotificationBell: React.FC = () => {
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -80,17 +82,14 @@ export const NotificationBell: React.FC = () => {
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* Modal */}
       {showDropdown && (
         <>
           {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setShowDropdown(false)}
-          />
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setShowDropdown(false)} />
 
-          {/* Notification Panel */}
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-[#64c7cd]/40 z-50 max-h-96 overflow-hidden flex flex-col">
+          {/* Centered Modal Panel */}
+          <div className="fixed right-6 top-16 w-96 bg-white rounded-xl shadow-2xl border border-[#64c7cd]/40 z-50 max-h-[70vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -152,6 +151,16 @@ export const NotificationBell: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Footer with View All */}
+            <div className="p-3 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => { setShowDropdown(false); navigate('/admin/notifications') }}
+                className="px-3 py-2 text-xs font-semibold text-white bg-[#64c7cd] hover:bg-[#54b5bb] rounded-lg"
+              >
+                Ver todas las notificaciones
+              </button>
             </div>
           </div>
         </>

@@ -6,6 +6,8 @@ using PdfPortal.Application.Interfaces;
 using PdfPortal.Domain.Entities;
 using System.Linq.Expressions;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using PdfPortal.Infrastructure.Data;
 
 namespace PdfPortal.Api.Controllers;
 
@@ -16,11 +18,13 @@ public class AdminController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuthService _authService;
+    private readonly PdfPortalDbContext _dbContext;
 
-    public AdminController(IUnitOfWork unitOfWork, IAuthService authService)
+    public AdminController(IUnitOfWork unitOfWork, IAuthService authService, PdfPortalDbContext dbContext)
     {
         _unitOfWork = unitOfWork;
         _authService = authService;
+        _dbContext = dbContext;
     }
 
     // Dashboard Stats
@@ -278,8 +282,54 @@ public class AdminController : ControllerBase
                 return NotFound("User not found");
             }
 
-            await _unitOfWork.Users.DeleteAsync(user);
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Remove notifications for this user to avoid FK issues
+                var notifications = await _dbContext.Notifications
+                    .Where(n => n.ClientUserId == userIdInt)
+                    .ToListAsync();
+                if (notifications.Count > 0)
+                {
+                    _dbContext.Notifications.RemoveRange(notifications);
+                }
+
+                // Reassign any template rule sets created by this user to current admin (to avoid FK restrict)
+                var currentAdminId = CurrentUserHelper.GetCurrentUserId(HttpContext);
+                var templates = await _unitOfWork.TemplateRuleSets.FindAsync(t => t.CreatedByUserId == userIdInt);
+                foreach (var t in templates)
+                {
+                    t.CreatedByUserId = currentAdminId;
+                    await _unitOfWork.TemplateRuleSets.UpdateAsync(t);
+                }
+
+                // Delete documents belonging to this user
+                var originals = await _unitOfWork.DocumentOriginals.FindAsync(d => d.UploaderUserId == userIdInt);
+                var originalIds = originals.Select(o => o.Id).ToHashSet();
+                if (originalIds.Count > 0)
+                {
+                    var processed = await _unitOfWork.DocumentProcessed.FindAsync(d => originalIds.Contains(d.SourceDocumentId));
+                    foreach (var p in processed)
+                    {
+                        await _unitOfWork.DocumentProcessed.DeleteAsync(p);
+                    }
+                    foreach (var o in originals)
+                    {
+                        await _unitOfWork.DocumentOriginals.DeleteAsync(o);
+                    }
+                }
+
+                // Finally delete the user
+                await _unitOfWork.Users.DeleteAsync(user);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
 
             return Ok(new { message = "User deleted successfully" });
         }

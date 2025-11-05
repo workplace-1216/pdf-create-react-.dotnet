@@ -85,5 +85,26 @@ public class NotificationController : ControllerBase
 
         return Ok();
     }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var userRole = CurrentUserHelper.GetCurrentUserRole(HttpContext);
+        if (!string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
+        var notification = await _context.Notifications.FindAsync(id);
+        if (notification == null)
+        {
+            return NotFound();
+        }
+
+        _context.Notifications.Remove(notification);
+        await _context.SaveChangesAsync();
+
+        return Ok();
+    }
 }
 

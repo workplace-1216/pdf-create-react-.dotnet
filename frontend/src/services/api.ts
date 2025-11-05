@@ -104,6 +104,9 @@ export const documentApi = {
   markNotificationAsRead: (id: number): Promise<void> =>
     api.put(`/notification/${id}/read`).then(() => {}),
 
+  deleteNotification: (id: number): Promise<void> =>
+    api.delete(`/notification/${id}`).then(() => {}),
+
   clearAllNotifications: (): Promise<void> =>
     api.delete('/notification').then(() => {}),
 }
